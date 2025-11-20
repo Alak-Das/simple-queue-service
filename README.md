@@ -44,7 +44,7 @@ graph LR
 
     subgraph Request Flow
         B -- POST /queue/push --> C_push[MessageService.push]
-        C_push -- Create Message Object --> C_push_1[Message(content, createdAt, processed)]
+        C_push -- Create Message Object --> C_push_1["Message(content, createdAt, processed)"]
         C_push_1 -- Save to MongoDB --> D
 
         B -- GET /queue/pop --> C_pop[MessageService.pop]
