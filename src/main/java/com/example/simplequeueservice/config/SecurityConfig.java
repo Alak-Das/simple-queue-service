@@ -1,5 +1,6 @@
 package com.example.simplequeueservice.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -13,6 +14,18 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    @Value("${security.user.username}")
+    private String userUsername;
+
+    @Value("${security.user.password}")
+    private String userPassword;
+
+    @Value("${security.admin.username}")
+    private String adminUsername;
+
+    @Value("${security.admin.password}")
+    private String adminPassword;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -32,15 +45,15 @@ public class SecurityConfig {
     public UserDetailsService userDetailsService() {
         UserDetails user =
                 User.withDefaultPasswordEncoder()
-                        .username("user")
-                        .password("password")
+                        .username(userUsername)
+                        .password(userPassword)
                         .roles("USER")
                         .build();
 
         UserDetails admin =
                 User.withDefaultPasswordEncoder()
-                        .username("admin")
-                        .password("adminpassword") // Replace with a strong password in a real application
+                        .username(adminUsername)
+                        .password(adminPassword)
                         .roles("ADMIN", "USER")
                         .build();
 

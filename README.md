@@ -97,9 +97,10 @@ All endpoints are relative to the base path `/queue`.
 
 ### Authentication
 
-The application uses HTTP Basic Authentication.
-- **User:** `username: user`, `password: password`, Roles: `USER`
-- **Admin:** `username: admin`, `password: adminpassword`, Roles: `ADMIN`, `USER`
+The application uses HTTP Basic Authentication. Usernames and passwords are configurable via `application.properties` or environment variables.
+
+-   **User:** Configurable with `security.user.username` (default: `user`) and `security.user.password` (default: `password`). Roles: `USER`
+-   **Admin:** Configurable with `security.admin.username` (default: `admin`) and `security.admin.password` (default: `adminpassword`). Roles: `ADMIN`, `USER`
 
 ### Push a Message
 
@@ -267,11 +268,16 @@ sequenceDiagram
 
 ### Configuration
 
-The following properties can be configured in `application.properties`:
+The following properties can be configured in `application.properties` or by setting corresponding environment variables:
 
-*   `spring.data.mongodb.uri`: The connection URI for the MongoDB instance.
+*   `spring.data.mongodb.uri`: The connection URI for the MongoDB instance. Can be set via `MONGO_URI` environment variable.
+*   `spring.data.mongodb.database`: The database name for MongoDB. Can be set via `MONGO_DB` environment variable.
 *   `message.expiry.minutes`: The retention period for messages in minutes. Default is 10.
 *   `server.port`: The port on which the application will run. Default is 8080.
+*   `security.user.username`: Username for the 'USER' role. Can be set via `SECURITY_USER_USERNAME` environment variable.
+*   `security.user.password`: Password for the 'USER' role. Can be set via `SECURITY_USER_PASSWORD` environment variable.
+*   `security.admin.username`: Username for the 'ADMIN' role. Can be set via `SECURITY_ADMIN_USERNAME` environment variable.
+*   `security.admin.password`: Password for the 'ADMIN' role. Can be set via `SECURITY_ADMIN_PASSWORD` environment variable.
 
 ## Getting Started
 
