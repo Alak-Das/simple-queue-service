@@ -86,7 +86,7 @@ This service implements a Time-To-Live (TTL) policy for messages to prevent the 
 *   **Spring Boot 3.2.5**
 *   **Spring Data MongoDB:** For database interaction.
 *   **Spring Web:** For creating the RESTful API.
-*   **Spring Security:** For securing the application.
+*   **Spring Security:** For securing the application, with role-based access control.
 *   **Lombok:** To reduce boilerplate code.
 *   **Maven:** For project build and dependency management.
 *   **SpringDoc (OpenAPI 3):** For API documentation.
@@ -94,6 +94,12 @@ This service implements a Time-To-Live (TTL) policy for messages to prevent the 
 ## API Endpoints
 
 All endpoints are relative to the base path `/queue`.
+
+### Authentication
+
+The application uses HTTP Basic Authentication.
+- **User:** `username: user`, `password: password`, Roles: `USER`
+- **Admin:** `username: admin`, `password: adminpassword`, Roles: `ADMIN`, `USER`
 
 ### Push a Message
 
@@ -136,12 +142,13 @@ All endpoints are relative to the base path `/queue`.
         ```
     *   **404 Not Found:** If the queue is empty.
 
-### View All Messages
+### View All Messages (Admin Only)
 
 *   **Method:** `GET`
 *   **URL:** `/queue/view`
 *   **Headers:**
     *   `consumerGroup`: The name of the consumer group.
+*   **Authentication:** Requires `ADMIN` role.
 *   **Response:**
     *   **200 OK:** Returns a list of all messages in the queue.
         ```json
@@ -154,6 +161,8 @@ All endpoints are relative to the base path `/queue`.
             }
         ]
         ```
+    *   **401 Unauthorized:** If no valid credentials are provided.
+    *   **403 Forbidden:** If the authenticated user does not have the `ADMIN` role.
 
 ## Low-Level Design
 

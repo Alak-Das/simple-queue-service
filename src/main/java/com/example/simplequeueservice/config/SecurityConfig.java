@@ -18,6 +18,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests((requests) -> requests
+                        .requestMatchers("/queue/view").hasRole("ADMIN")
+                        .requestMatchers("/queue/push", "/queue/pop").hasAnyRole("USER", "ADMIN")
                         .anyRequest().authenticated()
                 )
                 .httpBasic()
@@ -35,6 +37,13 @@ public class SecurityConfig {
                         .roles("USER")
                         .build();
 
-        return new InMemoryUserDetailsManager(user);
+        UserDetails admin =
+                User.withDefaultPasswordEncoder()
+                        .username("admin")
+                        .password("adminpassword") // Replace with a strong password in a real application
+                        .roles("ADMIN", "USER")
+                        .build();
+
+        return new InMemoryUserDetailsManager(user, admin);
     }
 }

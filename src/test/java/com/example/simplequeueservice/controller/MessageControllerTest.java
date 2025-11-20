@@ -29,37 +29,71 @@ public class MessageControllerTest {
     @MockBean
     private MessageService messageService;
 
-@Test
-@WithMockUser(username = "user", password = "password", roles = "USER")
-public void testPush() throws Exception {
-    String jsonContent = "{\"key1\":\"value1\",\"key2\":\"value2\"}";
-    when(messageService.push(anyString(), anyString())).thenReturn(new Message(jsonContent));
+    @Test
+    @WithMockUser(username = "user", password = "password", roles = "USER")
+    public void testPush() throws Exception {
+        String jsonContent = "{\"key1\":\"value1\",\"key2\":\"value2\"}";
+        when(messageService.push(anyString(), anyString())).thenReturn(new Message(jsonContent));
 
-    mockMvc.perform(post("/queue/push")
-            .header("consumerGroup", "testGroup")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(jsonContent)
-            .with(csrf()))
-            .andExpect(status().isOk());
-}
+        mockMvc.perform(post("/queue/push")
+                .header("consumerGroup", "testGroup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonContent)
+                .with(csrf()))
+                .andExpect(status().isOk());
+    }
 
-@Test
-@WithMockUser(username = "user", password = "password", roles = "USER")
-public void testPop() throws Exception {
-    when(messageService.pop(anyString())).thenReturn(Optional.of(new Message("Test message")));
+    @Test
+    @WithMockUser(username = "admin", password = "adminpassword", roles = {"ADMIN", "USER"})
+    public void testPushAsAdmin() throws Exception {
+        String jsonContent = "{\"key1\":\"value1\",\"key2\":\"value2\"}";
+        when(messageService.push(anyString(), anyString())).thenReturn(new Message(jsonContent));
 
-    mockMvc.perform(get("/queue/pop")
-            .header("consumerGroup", "testGroup"))
-            .andExpect(status().isOk());
-}
+        mockMvc.perform(post("/queue/push")
+                .header("consumerGroup", "testGroup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonContent)
+                .with(csrf()))
+                .andExpect(status().isOk());
+    }
 
-@Test
-@WithMockUser(username = "user", password = "password", roles = "USER")
-public void testView() throws Exception {
-    when(messageService.view(anyString())).thenReturn(Arrays.asList(new Message("Test message")));
+    @Test
+    @WithMockUser(username = "user", password = "password", roles = "USER")
+    public void testPop() throws Exception {
+        when(messageService.pop(anyString())).thenReturn(Optional.of(new Message("Test message")));
 
-    mockMvc.perform(get("/queue/view")
-            .header("consumerGroup", "testGroup"))
-            .andExpect(status().isOk());
-}
+        mockMvc.perform(get("/queue/pop")
+                .header("consumerGroup", "testGroup"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", password = "adminpassword", roles = {"ADMIN", "USER"})
+    public void testPopAsAdmin() throws Exception {
+        when(messageService.pop(anyString())).thenReturn(Optional.of(new Message("Test message")));
+
+        mockMvc.perform(get("/queue/pop")
+                .header("consumerGroup", "testGroup"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "user", password = "password", roles = "USER")
+    public void testViewForbiddenForUser() throws Exception {
+        when(messageService.view(anyString())).thenReturn(Arrays.asList(new Message("Test message")));
+
+        mockMvc.perform(get("/queue/view")
+                .header("consumerGroup", "testGroup"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", password = "adminpassword", roles = {"ADMIN", "USER"})
+    public void testViewAsAdmin() throws Exception {
+        when(messageService.view(anyString())).thenReturn(Arrays.asList(new Message("Test message")));
+
+        mockMvc.perform(get("/queue/view")
+                .header("consumerGroup", "testGroup"))
+                .andExpect(status().isOk());
+    }
 }
