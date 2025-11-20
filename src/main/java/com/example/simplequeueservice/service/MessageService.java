@@ -1,11 +1,15 @@
 package com.example.simplequeueservice.service;
 
 import com.example.simplequeueservice.model.Message;
-import com.example.simplequeueservice.repository.MessageRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,32 +21,29 @@ public class MessageService {
     private static final Logger logger = LoggerFactory.getLogger(MessageService.class);
 
     @Autowired
-    private MessageRepository messageRepository;
+    private MongoTemplate mongoTemplate;
 
-    public Message push(String content) {
-        logger.info("Saving message with content: {}", content);
+    public Message push(String consumerGroup, String content) {
+        logger.info("Saving message with content: {} to consumer group: {}", content, consumerGroup);
         Message message = new Message(content);
-        return messageRepository.save(message);
+        return mongoTemplate.save(message, consumerGroup);
     }
 
-    public Optional<Message> pop() {
-        logger.info("Popping oldest message from the queue");
-        Optional<Message> oldestMessage = messageRepository.findAll(Sort.by(Sort.Direction.ASC, "createdAt"))
-                .stream()
-                .filter(message -> !message.isProcessed())
-                .findFirst();
+    public Optional<Message> pop(String consumerGroup) {
+        logger.info("Popping oldest message from the queue for consumer group: {}", consumerGroup);
 
-        oldestMessage.ifPresent(message -> {
-            logger.info("Marking message with id {} as processed", message.getId());
-            message.setProcessed(true);
-            messageRepository.save(message);
-        });
+        Query query = new Query(Criteria.where("processed").is(false))
+                .with(Sort.by(Sort.Direction.ASC, "createdAt"));
+        Update update = new Update().set("processed", true);
+        FindAndModifyOptions options = new FindAndModifyOptions().returnNew(true);
 
-        return oldestMessage;
+        Message message = mongoTemplate.findAndModify(query, update, options, Message.class, consumerGroup);
+
+        return Optional.ofNullable(message);
     }
 
-    public List<Message> view() {
-        logger.info("Viewing all messages in the queue");
-        return messageRepository.findAll(Sort.by(Sort.Direction.ASC, "createdAt"));
+    public List<Message> view(String consumerGroup) {
+        logger.info("Viewing all messages in the queue for consumer group: {}", consumerGroup);
+        return mongoTemplate.findAll(Message.class, consumerGroup);
     }
 }

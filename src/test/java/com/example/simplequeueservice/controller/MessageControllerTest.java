@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.Arrays;
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -28,34 +29,37 @@ public class MessageControllerTest {
     @MockBean
     private MessageService messageService;
 
-    @Test
-    @WithMockUser(username = "user", password = "password", roles = "USER")
-    public void testPush() throws Exception {
-        String jsonContent = "{\"key1\":\"value1\",\"key2\":\"value2\"}";
-        when(messageService.push(jsonContent)).thenReturn(new Message(jsonContent));
+@Test
+@WithMockUser(username = "user", password = "password", roles = "USER")
+public void testPush() throws Exception {
+    String jsonContent = "{\"key1\":\"value1\",\"key2\":\"value2\"}";
+    when(messageService.push(anyString(), anyString())).thenReturn(new Message(jsonContent));
 
-        mockMvc.perform(post("/queue/push")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(jsonContent)
-                .with(csrf()))
-                .andExpect(status().isOk());
-    }
+    mockMvc.perform(post("/queue/push")
+            .header("consumerGroup", "testGroup")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(jsonContent)
+            .with(csrf()))
+            .andExpect(status().isOk());
+}
 
-    @Test
-    @WithMockUser(username = "user", password = "password", roles = "USER")
-    public void testPop() throws Exception {
-        when(messageService.pop()).thenReturn(Optional.of(new Message("Test message")));
+@Test
+@WithMockUser(username = "user", password = "password", roles = "USER")
+public void testPop() throws Exception {
+    when(messageService.pop(anyString())).thenReturn(Optional.of(new Message("Test message")));
 
-        mockMvc.perform(get("/queue/pop"))
-                .andExpect(status().isOk());
-    }
+    mockMvc.perform(get("/queue/pop")
+            .header("consumerGroup", "testGroup"))
+            .andExpect(status().isOk());
+}
 
-    @Test
-    @WithMockUser(username = "user", password = "password", roles = "USER")
-    public void testView() throws Exception {
-        when(messageService.view()).thenReturn(Arrays.asList(new Message("Test message")));
+@Test
+@WithMockUser(username = "user", password = "password", roles = "USER")
+public void testView() throws Exception {
+    when(messageService.view(anyString())).thenReturn(Arrays.asList(new Message("Test message")));
 
-        mockMvc.perform(get("/queue/view"))
-                .andExpect(status().isOk());
-    }
+    mockMvc.perform(get("/queue/view")
+            .header("consumerGroup", "testGroup"))
+            .andExpect(status().isOk());
+}
 }

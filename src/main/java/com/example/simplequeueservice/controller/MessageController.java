@@ -21,24 +21,24 @@ public class MessageController {
     @Autowired
     private MessageService messageService;
 
-    @PostMapping("/push")
-    public Message push(@RequestBody JsonNode request) {
-        String content = request.toString();
-        logger.info("Pushing message with content: {}", content);
-        return messageService.push(content);
-    }
+@PostMapping("/push")
+public Message push(@RequestHeader("consumerGroup") String consumerGroup, @RequestBody JsonNode request) {
+    String content = request.toString();
+    logger.info("Pushing message with content: {}", content);
+    return messageService.push(consumerGroup, content);
+}
 
-    @GetMapping("/pop")
-    public ResponseEntity<Message> pop() {
-        logger.info("Popping message from the queue");
-        Optional<Message> message = messageService.pop();
-        return message.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
+@GetMapping("/pop")
+public ResponseEntity<Message> pop(@RequestHeader("consumerGroup") String consumerGroup) {
+    logger.info("Popping message from the queue");
+    Optional<Message> message = messageService.pop(consumerGroup);
+    return message.map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+}
 
-    @GetMapping("/view")
-    public List<Message> view() {
-        logger.info("Viewing all messages in the queue");
-        return messageService.view();
-    }
+@GetMapping("/view")
+public List<Message> view(@RequestHeader("consumerGroup") String consumerGroup) {
+    logger.info("Viewing all messages in the queue");
+    return messageService.view(consumerGroup);
+}
 }
