@@ -23,6 +23,60 @@ graph TD
     end
 ```
 
+## Workflow Flowchart
+
+The following flowchart details the overall operational flow of the Simple Queue Service, from client interaction to data persistence:
+
+```mermaid
+graph LR
+    subgraph Client Interaction
+        A[Client] -- HTTP Request --> B{MessageController}
+    end
+
+    subgraph Service Layer
+        B -- Call Service Method --> C[MessageService]
+    end
+
+    subgraph Data Persistence
+        C -- Interact with DB --> D[MongoTemplate]
+        D -- CRUD Operations --> E[(MongoDB)]
+    end
+
+    subgraph Request Flow
+        B -- POST /queue/push --> C_push[MessageService.push]
+        C_push -- Create Message Object --> C_push_1[Message(content, createdAt, processed)]
+        C_push_1 -- Save to MongoDB --> D
+
+        B -- GET /queue/pop --> C_pop[MessageService.pop]
+        C_pop -- Query oldest unprocessed message --> D_pop_1[MongoDB: Query {processed: false} sorted by createdAt ASC]
+        D_pop_1 -- Atomically update processed=true --> D_pop_2[MongoDB: findAndModify]
+        D_pop_2 -- Return updated message --> C_pop
+
+        B -- GET /queue/view --> C_view[MessageService.view]
+        C_view -- Find all messages --> D_view_1[MongoDB: findAll]
+        D_view_1 -- Return list of messages --> C_view
+    end
+
+    subgraph Response Flow
+        C_push --> B_response_push[MessageController: 200 OK (Message)]
+        C_pop -- Optional<Message> --> B_response_pop[MessageController: 200 OK (Message) / 404 Not Found]
+        C_view --> B_response_view[MessageController: 200 OK (List<Message>)]
+
+        B_response_push --> A
+        B_response_pop --> A
+        B_response_view --> A
+    end
+
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style B fill:#bbf,stroke:#333,stroke-width:2px
+    style C fill:#ccf,stroke:#333,stroke-width:2px
+    style D fill:#ddf,stroke:#333,stroke-width:2px
+    style E fill:#ada,stroke:#333,stroke-width:2px
+    style C_push fill:#ccf,stroke:#333,stroke-width:1px
+    style C_pop fill:#ccf,stroke:#333,stroke-width:1px
+    style C_view fill:#ccf,stroke:#333,stroke-width:1px
+```
+
 ## Features
 
 *   **Multi-tenancy:** Supports multiple consumer groups, with each group having its own dedicated queue (MongoDB collection).
