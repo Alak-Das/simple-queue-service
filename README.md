@@ -57,11 +57,11 @@ graph LR
         D_view_1 -- Return list of messages --> C_view
     end
 
-    subgraph Response Flow
-        C_push --> B_response_push[MessageController: 200 OK (Message)]
-        C_pop -- Optional<Message> --> B_response_pop[MessageController: 200 OK (Message) / 404 Not Found]
-        C_view --> B_response_view[MessageController: 200 OK (List<Message>)]
+    C_push --> B_response_push[MessageController: 200 OK (Message)]
+    C_pop --> B_response_pop[MessageController: 200 OK (Message) / 404 Not Found]
+    C_view --> B_response_view[MessageController: 200 OK (List<Message>)]
 
+    subgraph Response Flow
         B_response_push --> A
         B_response_pop --> A
         B_response_view --> A
@@ -199,9 +199,9 @@ The `Message` documents are stored in MongoDB collections. The name of the colle
 
 ```json
 {
-    "_id": ObjectId("632c9e6a5b7d8e1e3e8e1a1a"),
+    "_id": "632c9e6a5b7d8e1e3e8e1a1a",
     "content": "{\"key\":\"value\"}",
-    "createdAt": ISODate("2025-09-22T14:30:02.123Z"),
+    "createdAt": "2025-09-22T14:30:02.123Z",
     "processed": false,
     "_class": "com.example.simplequeueservice.model.Message"
 }
