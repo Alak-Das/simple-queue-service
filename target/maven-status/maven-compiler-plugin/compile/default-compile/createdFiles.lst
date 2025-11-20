@@ -1,0 +1,8 @@
+com\example\simplequeueservice\SimpleQueueServiceApplication.class
+com\example\simplequeueservice\config\MongoTTLConfig.class
+com\example\simplequeueservice\repository\MessageRepository.class
+com\example\simplequeueservice\model\Message.class
+com\example\simplequeueservice\service\MessageService.class
+com\example\simplequeueservice\config\SecurityConfig.class
+com\example\simplequeueservice\controller\MessageController.class
+com\example\simplequeueservice\exception\GlobalExceptionHandler.class
