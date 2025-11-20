@@ -4,7 +4,9 @@
 
 This project is a simple, lightweight message queue service built with Spring Boot. It provides a RESTful API for pushing, popping, and viewing messages in different consumer groups. The service is designed to be easy to use and deploy, making it ideal for scenarios where a simple, multi-tenant queue is needed without the overhead of a full-fledged message broker.
 
-## Architecture
+## High-Level Design
+
+### Architecture Diagram
 
 The following diagram illustrates the high-level architecture of the Simple Queue Service:
 
@@ -23,7 +25,7 @@ graph TD
     end
 ```
 
-## Workflow Flowchart
+### Workflow Flowchart
 
 The following flowchart details the overall operational flow of the Simple Queue Service, from client interaction to data persistence, highlighting the three main operations: push, pop, and view.
 
@@ -193,9 +195,10 @@ The `Message` documents are stored in MongoDB collections. The name of the colle
 }
 ```
 
-### Sequence Diagrams
 
-#### Push Operation
+## Sequence Diagrams
+
+### Push Operation
 
 ```mermaid
 sequenceDiagram
@@ -215,7 +218,7 @@ sequenceDiagram
     MessageController-->>-Client: 200 OK (savedMessage)
 ```
 
-#### Pop Operation
+### Pop Operation
 
 ```mermaid
 sequenceDiagram
