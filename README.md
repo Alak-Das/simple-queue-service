@@ -31,6 +31,13 @@ graph TD
 *   **At-Least-Once Delivery:** The `pop` operation marks messages as processed, which is a step towards ensuring at-least-once delivery.
 *   **API Documentation:** Integrated with SpringDoc to provide OpenAPI documentation.
 
+## Message Retention
+
+This service implements a Time-To-Live (TTL) policy for messages to prevent the database from growing indefinitely. Messages are automatically deleted from the queue after a configurable period.
+
+- **Default Retention Period:** By default, messages are retained for **10 minutes**.
+- **Configuration:** This duration can be configured in the `application.properties` file by setting the `message.expiry.minutes` property.
+
 ## Technologies Used
 
 *   **Java 17**
