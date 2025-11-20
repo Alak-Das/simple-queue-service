@@ -239,18 +239,26 @@ sequenceDiagram
     participant MongoTemplate
     participant MongoDB
 
-    Client->>+MessageController: GET /queue/pop (consumerGroup)
-    MessageController->>+MessageService: pop(consumerGroup)
-    MessageService->>+MongoTemplate: findAndModify(query, update, options, Message.class, consumerGroup)
-    MongoTemplate->>+MongoDB: findAndModify(query, update)
-    MongoDB-->>-MongoTemplate: modifiedMessage
-    MongoTemplate-->>-MessageService: Optional<modifiedMessage>
-    MessageService-->>-MessageController: Optional<modifiedMessage>
+    Client->>MessageController: GET /queue/pop (consumerGroup)
+    activate MessageController
+    MessageController->>MessageService: pop(consumerGroup)
+    activate MessageService
+    MessageService->>MongoTemplate: findAndModify(query, update, options, Message.class, consumerGroup)
+    activate MongoTemplate
+    MongoTemplate->>MongoDB: findAndModify(query, update)
+    activate MongoDB
+    MongoDB-->>MongoTemplate: modifiedMessage
+    deactivate MongoDB
+    MongoTemplate-->>MessageService: Optional<modifiedMessage>
+    deactivate MongoTemplate
+    MessageService-->>MessageController: Optional<modifiedMessage>
+    deactivate MessageService
     alt Message Found
-        MessageController-->>-Client: 200 OK (modifiedMessage)
+        MessageController-->>Client: 200 OK (modifiedMessage)
     else Message Not Found
-        MessageController-->>-Client: 404 Not Found
+        MessageController-->>Client: 404 Not Found
     end
+    deactivate MessageController
 ```
 
 ### Error Handling
