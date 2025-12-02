@@ -15,12 +15,16 @@ public class Message {
 
     @Id
     private String id;
-    @NotBlank(message = "Content is mandatory")
+    @NotBlank(message = "Message Content is mandatory")
     private String content;
+    @NotBlank(message = "Message consumerGroup is mandatory")
+    String consumerGroup;
     private LocalDateTime createdAt;
     private boolean processed;
 
-    public Message(String content) {
+    public Message(String messageId, String consumerGroup, String content) {
+        this.id = messageId;
+        this.consumerGroup = consumerGroup;
         this.content = content;
         this.createdAt = LocalDateTime.now();
         this.processed = false;

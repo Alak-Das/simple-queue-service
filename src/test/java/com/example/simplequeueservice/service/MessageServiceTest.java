@@ -38,29 +38,31 @@ class MessageServiceTest {
     void push() {
         String consumerGroup = "testGroup";
         String content = "testContent";
-        Message message = new Message(content);
-        when(mongoTemplate.save(any(Message.class), eq(consumerGroup))).thenReturn(message);
+        Message messageToPush = new Message("testId", consumerGroup, content);
+        when(mongoTemplate.save(any(Message.class), eq(consumerGroup))).thenReturn(messageToPush);
 
-        Message result = messageService.push(consumerGroup, content);
+        Message result = messageService.push(messageToPush);
         assertNotNull(result);
         assertEquals(content, result.getContent());
+        assertEquals(consumerGroup, result.getConsumerGroup());
     }
 
     @Test
     void pop() {
         String consumerGroup = "testGroup";
-        Message message = new Message("testContent");
+        Message message = new Message("testId", consumerGroup, "testContent");
         when(mongoTemplate.findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class), eq(Message.class), eq(consumerGroup))).thenReturn(message);
 
         Optional<Message> result = messageService.pop(consumerGroup);
         assertTrue(result.isPresent());
         assertEquals(message.getContent(), result.get().getContent());
+        assertEquals(message.getConsumerGroup(), result.get().getConsumerGroup());
     }
 
     @Test
     void view() {
         String consumerGroup = "testGroup";
-        Message message = new Message("testContent");
+        Message message = new Message("testId", consumerGroup, "testContent");
         List<Message> messages = Collections.singletonList(message);
         when(mongoTemplate.findAll(Message.class, consumerGroup)).thenReturn(messages);
 
@@ -68,5 +70,6 @@ class MessageServiceTest {
         assertFalse(result.isEmpty());
         assertEquals(1, result.size());
         assertEquals(message.getContent(), result.get(0).getContent());
+        assertEquals(message.getConsumerGroup(), result.get(0).getConsumerGroup());
     }
 }

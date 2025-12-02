@@ -15,12 +15,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.Arrays;
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.any;
 
 @WebMvcTest(MessageController.class)
 @Import(SecurityConfig.class)
@@ -36,7 +38,8 @@ public class MessageControllerTest {
     @WithMockUser(username = "user", password = "password", roles = "USER")
     public void testPush() throws Exception {
         String jsonContent = "{\"key1\":\"value1\",\"key2\":\"value2\"}";
-        when(messageService.push(anyString(), anyString())).thenReturn(new Message(jsonContent));
+        Message message = new Message("someId", "testGroup", jsonContent);
+        when(messageService.push(any(Message.class))).thenReturn(message);
 
         mockMvc.perform(post("/queue/push")
                 .header("consumerGroup", "testGroup")
@@ -50,7 +53,8 @@ public class MessageControllerTest {
     @WithMockUser(username = "admin", password = "adminpassword", roles = {"ADMIN", "USER"})
     public void testPushAsAdmin() throws Exception {
         String jsonContent = "{\"key1\":\"value1\",\"key2\":\"value2\"}";
-        when(messageService.push(anyString(), anyString())).thenReturn(new Message(jsonContent));
+        Message message = new Message("someId", "testGroup", jsonContent);
+        when(messageService.push(any(Message.class))).thenReturn(message);
 
         mockMvc.perform(post("/queue/push")
                 .header("consumerGroup", "testGroup")
@@ -63,7 +67,7 @@ public class MessageControllerTest {
     @Test
     @WithMockUser(username = "user", password = "password", roles = "USER")
     public void testPop() throws Exception {
-        when(messageService.pop(anyString())).thenReturn(Optional.of(new Message("Test message")));
+        when(messageService.pop(anyString())).thenReturn(Optional.of(new Message("someId", "testGroup", "Test message")));
 
         mockMvc.perform(get("/queue/pop")
                 .header("consumerGroup", "testGroup"))
@@ -73,7 +77,7 @@ public class MessageControllerTest {
     @Test
     @WithMockUser(username = "admin", password = "adminpassword", roles = {"ADMIN", "USER"})
     public void testPopAsAdmin() throws Exception {
-        when(messageService.pop(anyString())).thenReturn(Optional.of(new Message("Test message")));
+        when(messageService.pop(anyString())).thenReturn(Optional.of(new Message("someId", "testGroup", "Test message")));
 
         mockMvc.perform(get("/queue/pop")
                 .header("consumerGroup", "testGroup"))
@@ -83,7 +87,7 @@ public class MessageControllerTest {
     @Test
     @WithMockUser(username = "user", password = "password", roles = "USER")
     public void testViewForbiddenForUser() throws Exception {
-        when(messageService.view(anyString())).thenReturn(Arrays.asList(new Message("Test message")));
+        when(messageService.view(anyString())).thenReturn(Arrays.asList(new Message("someId", "testGroup", "Test message")));
 
         mockMvc.perform(get("/queue/view")
                 .header("consumerGroup", "testGroup"))
@@ -93,7 +97,7 @@ public class MessageControllerTest {
     @Test
     @WithMockUser(username = "admin", password = "adminpassword", roles = {"ADMIN", "USER"})
     public void testViewAsAdmin() throws Exception {
-        when(messageService.view(anyString())).thenReturn(Arrays.asList(new Message("Test message")));
+        when(messageService.view(anyString())).thenReturn(Arrays.asList(new Message("someId", "testGroup", "Test message")));
 
         mockMvc.perform(get("/queue/view")
                 .header("consumerGroup", "testGroup"))

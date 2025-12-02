@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class MessageService {
@@ -23,10 +24,9 @@ public class MessageService {
     @Autowired
     private MongoTemplate mongoTemplate;
 
-    public Message push(String consumerGroup, String content) {
-        logger.info("Saving message with content: {} to consumer group: {}", content, consumerGroup);
-        Message message = new Message(content);
-        return mongoTemplate.save(message, consumerGroup);
+    public Message push(Message message) {
+        logger.info("Saving message with content: {} to consumer group: {}", message.getContent(), message.getConsumerGroup());
+        return mongoTemplate.save(message, message.getConsumerGroup());
     }
 
     public Optional<Message> pop(String consumerGroup) {
