@@ -9,7 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Optional;
 
 @RestController
@@ -22,8 +21,7 @@ public class MessageController {
     private MessageService messageService;
 
 @PostMapping("/push")
-public Message push(@RequestHeader("consumerGroup") String consumerGroup, @RequestBody JsonNode request) {
-    String content = request.toString();
+public Message push(@RequestHeader("consumerGroup") String consumerGroup, @RequestBody String content) {
     logger.info("Pushing message with content: {}", content);
     return messageService.push(consumerGroup, content);
 }

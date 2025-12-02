@@ -4,7 +4,9 @@ import com.example.simplequeueservice.model.Message;
 import com.example.simplequeueservice.service.MessageService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.example.simplequeueservice.config.SecurityConfig;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -21,6 +23,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(MessageController.class)
+@Import(SecurityConfig.class)
 public class MessageControllerTest {
 
     @Autowired
@@ -84,7 +87,7 @@ public class MessageControllerTest {
 
         mockMvc.perform(get("/queue/view")
                 .header("consumerGroup", "testGroup"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden()); // Revert to original expected status
     }
 
     @Test
