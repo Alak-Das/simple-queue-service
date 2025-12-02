@@ -25,12 +25,12 @@ public class MessageService {
     private MongoTemplate mongoTemplate;
 
     public Message push(Message message) {
-        logger.info("Saving message with content: {} to consumer group: {}", message.getContent(), message.getConsumerGroup());
+        logger.info("Saving message with content: {} to Consumer Group: {}", message.getContent(), message.getConsumerGroup());
         return mongoTemplate.save(message, message.getConsumerGroup());
     }
 
     public Optional<Message> pop(String consumerGroup) {
-        logger.info("Popping oldest message from the queue for consumer group: {}", consumerGroup);
+        logger.info("Popping oldest message from the Queue for Consumer Group: {}", consumerGroup);
 
         Query query = new Query(Criteria.where("processed").is(false))
                 .with(Sort.by(Sort.Direction.ASC, "createdAt"));
@@ -42,8 +42,18 @@ public class MessageService {
         return Optional.ofNullable(message);
     }
 
-    public List<Message> view(String consumerGroup) {
-        logger.info("Viewing all messages in the queue for consumer group: {}", consumerGroup);
-        return mongoTemplate.findAll(Message.class, consumerGroup);
+    public List<Message> view(String consumerGroup, String processed) {
+        logger.info("Viewing all messages in the Queue for Consumer Group: {}. Filter by processed: {}", consumerGroup, processed);
+        Query query = new Query();
+        query.addCriteria(Criteria.where("consumerGroup").is(consumerGroup));
+
+        if (processed != null) {
+            if (processed.equalsIgnoreCase("yes")) {
+                query.addCriteria(Criteria.where("processed").is(true));
+            } else if (processed.equalsIgnoreCase("no")) {
+                query.addCriteria(Criteria.where("processed").is(false));
+            }
+        }
+        return mongoTemplate.find(query, Message.class, consumerGroup);
     }
 }

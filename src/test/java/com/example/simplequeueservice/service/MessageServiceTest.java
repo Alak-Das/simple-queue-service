@@ -64,9 +64,24 @@ class MessageServiceTest {
         String consumerGroup = "testGroup";
         Message message = new Message("testId", consumerGroup, "testContent");
         List<Message> messages = Collections.singletonList(message);
-        when(mongoTemplate.findAll(Message.class, consumerGroup)).thenReturn(messages);
+        when(mongoTemplate.find(any(Query.class), eq(Message.class), eq(consumerGroup))).thenReturn(messages);
 
-        List<Message> result = messageService.view(consumerGroup);
+        // Test with processed = null
+        List<Message> result = messageService.view(consumerGroup, null);
+        assertFalse(result.isEmpty());
+        assertEquals(1, result.size());
+        assertEquals(message.getContent(), result.get(0).getContent());
+        assertEquals(message.getConsumerGroup(), result.get(0).getConsumerGroup());
+
+        // Test with processed = "yes"
+        result = messageService.view(consumerGroup, "yes");
+        assertFalse(result.isEmpty());
+        assertEquals(1, result.size());
+        assertEquals(message.getContent(), result.get(0).getContent());
+        assertEquals(message.getConsumerGroup(), result.get(0).getConsumerGroup());
+
+        // Test with processed = "no"
+        result = messageService.view(consumerGroup, "no");
         assertFalse(result.isEmpty());
         assertEquals(1, result.size());
         assertEquals(message.getContent(), result.get(0).getContent());

@@ -87,20 +87,30 @@ public class MessageControllerTest {
     @Test
     @WithMockUser(username = "user", password = "password", roles = "USER")
     public void testViewForbiddenForUser() throws Exception {
-        when(messageService.view(anyString())).thenReturn(Arrays.asList(new Message("someId", "testGroup", "Test message")));
+        when(messageService.view(anyString(), anyString())).thenReturn(Arrays.asList(new Message("someId", "testGroup", "Test message")));
 
         mockMvc.perform(get("/queue/view")
                 .header("consumerGroup", "testGroup"))
-                .andExpect(status().isForbidden()); // Revert to original expected status
+                .andExpect(status().isForbidden());
     }
 
     @Test
     @WithMockUser(username = "admin", password = "adminpassword", roles = {"ADMIN", "USER"})
     public void testViewAsAdmin() throws Exception {
-        when(messageService.view(anyString())).thenReturn(Arrays.asList(new Message("someId", "testGroup", "Test message")));
+        when(messageService.view(anyString(), anyString())).thenReturn(Arrays.asList(new Message("someId", "testGroup", "Test message")));
 
         mockMvc.perform(get("/queue/view")
                 .header("consumerGroup", "testGroup"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/queue/view")
+                .header("consumerGroup", "testGroup")
+                .header("processed", "yes"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/queue/view")
+                .header("consumerGroup", "testGroup")
+                .header("processed", "no"))
                 .andExpect(status().isOk());
     }
 }
