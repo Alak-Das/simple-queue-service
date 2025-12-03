@@ -108,7 +108,7 @@ public class MessageService {
             }
         }
         List<Message> mongoMessages = mongoTemplate.find(query, Message.class, consumerGroup);
-        if (mongoMessages != null && !mongoMessages.isEmpty()) {
+        if (!mongoMessages.isEmpty()) {
             logger.info("Messages found in MongoDB for Consumer Group: {}.", consumerGroup);
             combinedMessages.addAll(mongoMessages);
         } else {
