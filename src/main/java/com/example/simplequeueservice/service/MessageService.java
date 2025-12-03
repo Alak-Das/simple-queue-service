@@ -19,13 +19,10 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Service
 public class MessageService {
@@ -67,16 +64,16 @@ public class MessageService {
         if (cachedMessage != null) {
             logger.info("Message found in cache for Consumer Group: {}", consumerGroup);
             taskExecutor.execute(() -> {
-                logger.info("Asynchronously updating message as processed=true for Consumer Group: {}", consumerGroup);
+                logger.info("Asynchronously updating message as consumed=true for Consumer Group: {}", consumerGroup);
                 updateMessageInMongo(cachedMessage.getId(), consumerGroup, true);
             });
             return Optional.of(cachedMessage);
         }
 
         logger.info("Message not found in cache for Consumer Group: {}. Fetching from DB", consumerGroup);
-        Query query = new Query(Criteria.where("processed").is(false))
+        Query query = new Query(Criteria.where("consumed").is(false))
                 .with(Sort.by(Sort.Direction.ASC, "createdAt"));
-        Update update = new Update().set("processed", true);
+        Update update = new Update().set("consumed", true);
         FindAndModifyOptions options = new FindAndModifyOptions().returnNew(true);
 
         Message message = mongoTemplate.findAndModify(query, update, options, Message.class, consumerGroup);
@@ -84,53 +81,52 @@ public class MessageService {
         return Optional.ofNullable(message);
     }
 
-    public List<Message> view(String consumerGroup, String processed) {
-        logger.info("Viewing all messages in the Queue for Consumer Group: {}. Filter by processed: {}", consumerGroup, StringUtils.isEmpty(processed) ? "" : processed);
+    public List<Message> view(String consumerGroup, String consumed) {
+        logger.info("Viewing all messages in the Queue for Consumer Group: {}. Filter by consumed: {}", consumerGroup, StringUtils.isEmpty(consumed) ? "" : consumed);
 
         List<Message> combinedMessages = new ArrayList<>();
 
-        // Retrieve messages from cache
-        List<Message> cachedMessages = cacheService.viewMessages(consumerGroup);
-        if (cachedMessages != null && !cachedMessages.isEmpty()) {
-            logger.info("Messages found in cache for Consumer Group: {}.", consumerGroup);
-            combinedMessages.addAll(cachedMessages);
-        } else {
-            logger.info("No messages found in cache for Consumer Group: {}.", consumerGroup);
-        }
-
-        // Fetch messages from MongoDB
-        logger.info("Fetching messages from MongoDB for Consumer Group: {}.", consumerGroup);
         Query query = new Query();
         query.addCriteria(Criteria.where("consumerGroup").is(consumerGroup));
 
-        if (processed != null) {
-            if (processed.equalsIgnoreCase("yes")) {
-                query.addCriteria(Criteria.where("processed").is(true));
-            } else if (processed.equalsIgnoreCase("no")) {
-                query.addCriteria(Criteria.where("processed").is(false));
+        if (consumed != null) {
+            if (consumed.equalsIgnoreCase("yes")) {
+                query.addCriteria(Criteria.where("consumed").is(true));
+            } else if (consumed.equalsIgnoreCase("no")) {
+                // Get from Cache
+                List<Message> cachedMessages = cacheService.viewMessages(consumerGroup);
+                combinedMessages.addAll(cachedMessages);
+                Set<String> cachedMessageIds = cachedMessages.stream()
+                        .map(Message::getId)
+                        .collect(Collectors.toSet());
+                // Exclude messages already found in cache
+                if (!cachedMessageIds.isEmpty()) {
+                    query.addCriteria(Criteria.where("id").nin(cachedMessageIds));
+                }
+                query.addCriteria(Criteria.where("consumed").is(false));
             }
         }
+
         List<Message> mongoMessages = mongoTemplate.find(query, Message.class, consumerGroup);
-        if (!mongoMessages.isEmpty()) {
-            logger.info("Messages found in MongoDB for Consumer Group: {}.", consumerGroup);
-            combinedMessages.addAll(mongoMessages);
-        } else {
-            logger.info("No messages found in MongoDB for Consumer Group: {}.", consumerGroup);
-        }
+        combinedMessages.addAll(mongoMessages);
 
-        // Use a Set to remove duplicates (if Message class properly implements equals and hashCode)
-        Set<Message> uniqueMessages = new HashSet<>(combinedMessages);
-        List<Message> result = new ArrayList<>(uniqueMessages);
+        // Sort by createdAt to maintain consistent order
+        combinedMessages.sort(Comparator.comparing(Message::getCreatedAt));
 
-        logger.info("Returning a combined list of {} unique messages for Consumer Group: {}", result.size(), consumerGroup);
-        return result;
+        logger.info("Returning a combined list of {} unique messages for Consumer Group: {}", combinedMessages.size(), consumerGroup);
+        return combinedMessages;
     }
 
-    private void updateMessageInMongo(String messageId, String consumerGroup, boolean processed) {
+    private void updateMessageInMongo(String messageId, String consumerGroup, boolean consumed) {
         Query query = new Query(Criteria.where("id").is(messageId));
-        Update update = new Update().set("processed", true);
-        mongoTemplate.updateFirst(query, update, Message.class, consumerGroup);
-        logger.info("Message with ID: {} in Consumer Group: {} updated to processed: {}", messageId, consumerGroup, processed);
+        Message originalMessage = mongoTemplate.findOne(query, Message.class, consumerGroup);
+        if (originalMessage != null) {
+            Message updatedMessage = originalMessage.markConsumed();
+            mongoTemplate.save(updatedMessage, consumerGroup);
+            logger.info("Message with ID: {} in Consumer Group: {} updated to consumed: {}", messageId, consumerGroup, consumed);
+        } else {
+            logger.warn("Message with ID: {} not found in Consumer Group: {} for update.", messageId, consumerGroup);
+        }
     }
 
     private void createTTLIndex(Message message) {

@@ -1,9 +1,11 @@
 package com.example.simplequeueservice.service;
 
 import com.example.simplequeueservice.model.Message;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -14,6 +16,9 @@ public class CacheService {
     public static final String CACHE_PREFIX = "consumerGroupMessages:";
     private final RedisTemplate<String, Object> redisTemplate;
 
+    @Value("${cache.ttl.minutes}")
+    private long redisCacheTtlMinutes;
+
     public CacheService(RedisTemplate<String, Object> redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
@@ -21,6 +26,7 @@ public class CacheService {
     public void addMessage(Message message) {
         String key = CACHE_PREFIX + message.getConsumerGroup();
         redisTemplate.opsForList().leftPush(key, message);
+        redisTemplate.expire(key, Duration.ofMinutes(redisCacheTtlMinutes));
     }
 
     public Message popMessage(String consumerGroup) {

@@ -42,8 +42,8 @@ public class MessageController {
 
     @GetMapping("/view")
     public List<Message> view(@RequestHeader("consumerGroup") String consumerGroup,
-                              @RequestHeader(value = "processed", required = false) String processed) {
-        logger.info("Received request to view all messages in the Queue for Consumer Group: {}. Filter by processed: {}", consumerGroup, StringUtils.isEmpty(processed)? "": processed);
-        return messageService.view(consumerGroup, processed);
+                              @RequestHeader(value = "consumed", required = false) String consumed) {
+        logger.info("Received request to view all messages in the Queue for Consumer Group: {}. Filter by consumed: {}", consumerGroup, StringUtils.isEmpty(consumed)? "": consumed);
+        return messageService.view(consumerGroup, consumed);
     }
 }

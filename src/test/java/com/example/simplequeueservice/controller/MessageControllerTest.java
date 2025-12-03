@@ -111,7 +111,7 @@ public class MessageControllerTest {
 
         mockMvc.perform(get("/queue/view")
                 .header("consumerGroup", "testGroup")
-                .header("processed", "yes"))
+                .header("consumed", "yes"))
                 .andExpect(status().isOk());
     }
 
@@ -122,7 +122,7 @@ public class MessageControllerTest {
 
         mockMvc.perform(get("/queue/view")
                 .header("consumerGroup", "testGroup")
-                .header("processed", "no"))
+                .header("consumed", "no"))
                 .andExpect(status().isOk());
     }
 }

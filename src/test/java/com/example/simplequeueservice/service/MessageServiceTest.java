@@ -134,21 +134,21 @@ class MessageServiceTest {
         List<Message> messages = Collections.singletonList(message);
         when(mongoTemplate.find(any(Query.class), eq(Message.class), eq(consumerGroup))).thenReturn(messages);
 
-        // Test with processed = null
+        // Test with consumed = null
         List<Message> result = messageService.view(consumerGroup, null);
         assertFalse(result.isEmpty());
         assertEquals(1, result.size());
         assertEquals(message.getContent(), result.get(0).getContent());
         assertEquals(message.getConsumerGroup(), result.get(0).getConsumerGroup());
 
-        // Test with processed = "yes"
+        // Test with consumed = "yes"
         result = messageService.view(consumerGroup, "yes");
         assertFalse(result.isEmpty());
         assertEquals(1, result.size());
         assertEquals(message.getContent(), result.get(0).getContent());
         assertEquals(message.getConsumerGroup(), result.get(0).getConsumerGroup());
 
-        // Test with processed = "no"
+        // Test with consumed = "no"
         result = messageService.view(consumerGroup, "no");
         assertFalse(result.isEmpty());
         assertEquals(1, result.size());
