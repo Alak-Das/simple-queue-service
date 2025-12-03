@@ -15,7 +15,7 @@ public class AsyncConfig {
         executor.setCorePoolSize(5);
         executor.setMaxPoolSize(10);
         executor.setQueueCapacity(25);
-        executor.setThreadNamePrefix("AsyncTask-");
+        executor.setThreadNamePrefix("PersistenceDataUpdater-");
         executor.initialize();
         return executor;
     }
