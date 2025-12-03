@@ -25,8 +25,6 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class MessageService {
 
-    private static final String indexField = "createdAt";
-    private static final Logger logger = LoggerFactory.getLogger(MessageService.class);
     @Autowired
     MongoClient mongoClient;
     @Value("${spring.data.mongodb.database}")
@@ -36,30 +34,14 @@ public class MessageService {
     @Autowired
     private MongoTemplate mongoTemplate;
 
+    private static final String indexField = "createdAt";
+
+    private static final Logger logger = LoggerFactory.getLogger(MessageService.class);
+
     public Message push(Message message) {
         createTTLIndex(message);
         logger.info("Saving message with content: {} to Consumer Group: {}", message.getContent(), message.getConsumerGroup());
         return mongoTemplate.save(message, message.getConsumerGroup());
-    }
-
-    private void createTTLIndex(Message message) {
-        MongoCollection<Document> collection = mongoClient.getDatabase(mongoDB).getCollection(message.getConsumerGroup());
-        boolean ttlExists = collection.listIndexes()
-                .into(new java.util.ArrayList<>())
-                .stream()
-                .anyMatch(index -> {
-                    Document key = (Document) index.get("key");
-                    return key != null && key.containsKey(indexField);
-                });
-
-        if (!ttlExists) {
-            logger.info("TTL index does not exist on field: {} for collection: {}. Creating...", indexField, message.getConsumerGroup());
-            IndexOptions indexOptions = new IndexOptions().expireAfter(expireMinutes, TimeUnit.MINUTES);
-            collection.createIndex(new Document(indexField, 1), indexOptions);
-            logger.info("TTL index created on field: {} for collection: {}", indexField, message.getConsumerGroup());
-        } else {
-            logger.info("TTL index already exists on field: {} for collection: {}", indexField, message.getConsumerGroup());
-        }
     }
 
     public Optional<Message> pop(String consumerGroup) {
@@ -88,5 +70,25 @@ public class MessageService {
             }
         }
         return mongoTemplate.find(query, Message.class, consumerGroup);
+    }
+
+    private void createTTLIndex(Message message) {
+        MongoCollection<Document> collection = mongoClient.getDatabase(mongoDB).getCollection(message.getConsumerGroup());
+        boolean ttlExists = collection.listIndexes()
+                .into(new java.util.ArrayList<>())
+                .stream()
+                .anyMatch(index -> {
+                    Document key = (Document) index.get("key");
+                    return key != null && key.containsKey(indexField);
+                });
+
+        if (!ttlExists) {
+            logger.info("TTL index does not exist on field: {} for collection: {}. Creating...", indexField, message.getConsumerGroup());
+            IndexOptions indexOptions = new IndexOptions().expireAfter(expireMinutes, TimeUnit.MINUTES);
+            collection.createIndex(new Document(indexField, 1), indexOptions);
+            logger.info("TTL index created on field: {} for collection: {}", indexField, message.getConsumerGroup());
+        } else {
+            logger.info("TTL index already exists on field: {} for collection: {}", indexField, message.getConsumerGroup());
+        }
     }
 }
