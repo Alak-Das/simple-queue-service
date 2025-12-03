@@ -1,6 +1,6 @@
-package com.example.simplequeueservice.service;
+package com.al.simplequeueservice.service;
 
-import com.example.simplequeueservice.model.Message;
+import com.al.simplequeueservice.model.Message;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.IndexOptions;
@@ -65,7 +65,7 @@ public class MessageService {
             logger.info("Message found in cache for Consumer Group: {}", consumerGroup);
             taskExecutor.execute(() -> {
                 logger.info("Asynchronously updating message as consumed=true for Consumer Group: {}", consumerGroup);
-                updateMessageInMongo(cachedMessage.getId(), consumerGroup, true);
+                updateMessageInMongo(cachedMessage.getId(), consumerGroup);
             });
             return Optional.of(cachedMessage);
         }
@@ -117,13 +117,13 @@ public class MessageService {
         return combinedMessages;
     }
 
-    private void updateMessageInMongo(String messageId, String consumerGroup, boolean consumed) {
+    private void updateMessageInMongo(String messageId, String consumerGroup) {
         Query query = new Query(Criteria.where("id").is(messageId));
         Message originalMessage = mongoTemplate.findOne(query, Message.class, consumerGroup);
         if (originalMessage != null) {
             Message updatedMessage = originalMessage.markConsumed();
             mongoTemplate.save(updatedMessage, consumerGroup);
-            logger.info("Message with ID: {} in Consumer Group: {} updated to consumed: {}", messageId, consumerGroup, consumed);
+            logger.info("Message with ID: {} in Consumer Group: {} updated to consumed: {}", messageId, consumerGroup, true);
         } else {
             logger.warn("Message with ID: {} not found in Consumer Group: {} for update.", messageId, consumerGroup);
         }

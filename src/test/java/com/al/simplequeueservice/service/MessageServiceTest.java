@@ -1,12 +1,11 @@
-package com.example.simplequeueservice.service;
+package com.al.simplequeueservice.service;
 
-import com.example.simplequeueservice.model.Message;
+import com.al.simplequeueservice.model.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;

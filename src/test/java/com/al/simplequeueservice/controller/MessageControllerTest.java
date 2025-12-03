@@ -1,10 +1,10 @@
-package com.example.simplequeueservice.controller;
+package com.al.simplequeueservice.controller;
 
-import com.example.simplequeueservice.model.Message;
-import com.example.simplequeueservice.service.MessageService;
+import com.al.simplequeueservice.model.Message;
+import com.al.simplequeueservice.service.MessageService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import com.example.simplequeueservice.config.SecurityConfig;
+import com.al.simplequeueservice.config.SecurityConfig;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.boot.test.mock.mockito.MockBean;

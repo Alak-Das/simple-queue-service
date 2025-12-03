@@ -206,7 +206,7 @@ The `Message` documents are stored in MongoDB collections. The name of the colle
     "content": "{\"key\":\"value\"}",
     "createdAt": "2025-09-22T14:30:02.123Z",
     "processed": false,
-    "_class": "com.example.simplequeueservice.model.Message"
+    "_class": "model.com.al.simplequeueservice.Message"
 }
 ```
 

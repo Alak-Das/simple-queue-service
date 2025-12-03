@@ -1,4 +1,4 @@
-package com.example.simplequeueservice.exception;
+package com.al.simplequeueservice.exception;
 
 import lombok.Data;
 import java.time.LocalDateTime;

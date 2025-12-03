@@ -1,6 +1,6 @@
-package com.example.simplequeueservice.service;
+package com.al.simplequeueservice.service;
 
-import com.example.simplequeueservice.model.Message;
+import com.al.simplequeueservice.model.Message;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;

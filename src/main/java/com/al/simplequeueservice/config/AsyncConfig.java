@@ -1,4 +1,4 @@
-package com.example.simplequeueservice.config;
+package com.al.simplequeueservice.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

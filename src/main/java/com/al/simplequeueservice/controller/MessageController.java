@@ -1,8 +1,8 @@
-package com.example.simplequeueservice.controller;
+package com.al.simplequeueservice.controller;
 
-import com.example.simplequeueservice.model.Message;
-import com.example.simplequeueservice.model.MessageResponse;
-import com.example.simplequeueservice.service.MessageService;
+import com.al.simplequeueservice.model.Message;
+import com.al.simplequeueservice.model.MessageResponse;
+import com.al.simplequeueservice.service.MessageService;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

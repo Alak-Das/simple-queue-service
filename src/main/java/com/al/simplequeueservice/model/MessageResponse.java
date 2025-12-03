@@ -1,8 +1,8 @@
-package com.example.simplequeueservice.model;
+package com.al.simplequeueservice.model;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 

@@ -1,4 +1,4 @@
-package com.example.simplequeueservice.exception;
+package com.al.simplequeueservice.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;

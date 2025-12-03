@@ -1,4 +1,4 @@
-package com.example.simplequeueservice.model;
+package com.al.simplequeueservice.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
