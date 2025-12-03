@@ -3,6 +3,7 @@ package com.example.simplequeueservice.controller;
 import com.example.simplequeueservice.model.Message;
 import com.example.simplequeueservice.model.MessageResponse;
 import com.example.simplequeueservice.service.MessageService;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,7 +43,7 @@ public class MessageController {
     @GetMapping("/view")
     public List<Message> view(@RequestHeader("consumerGroup") String consumerGroup,
                               @RequestHeader(value = "processed", required = false) String processed) {
-        logger.info("Received request to view all messages in the Queue for Consumer Group: {}. Filter by processed: {}", consumerGroup, processed);
+        logger.info("Received request to view all messages in the Queue for Consumer Group: {}. Filter by processed: {}", consumerGroup, StringUtils.isEmpty(processed)? "": processed);
         return messageService.view(consumerGroup, processed);
     }
 }

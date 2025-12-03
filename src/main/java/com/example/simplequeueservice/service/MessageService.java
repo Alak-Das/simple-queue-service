@@ -1,9 +1,15 @@
 package com.example.simplequeueservice.service;
 
 import com.example.simplequeueservice.model.Message;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.IndexOptions;
+import org.apache.commons.lang3.StringUtils;
+import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -14,19 +20,46 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class MessageService {
 
+    private static final String indexField = "createdAt";
     private static final Logger logger = LoggerFactory.getLogger(MessageService.class);
-
+    @Autowired
+    MongoClient mongoClient;
+    @Value("${spring.data.mongodb.database}")
+    private String mongoDB;
+    @Value("${message.expiry.minutes}")
+    private long expireMinutes;
     @Autowired
     private MongoTemplate mongoTemplate;
 
     public Message push(Message message) {
+        createTTLIndex(message);
         logger.info("Saving message with content: {} to Consumer Group: {}", message.getContent(), message.getConsumerGroup());
         return mongoTemplate.save(message, message.getConsumerGroup());
+    }
+
+    private void createTTLIndex(Message message) {
+        MongoCollection<Document> collection = mongoClient.getDatabase(mongoDB).getCollection(message.getConsumerGroup());
+        boolean ttlExists = collection.listIndexes()
+                .into(new java.util.ArrayList<>())
+                .stream()
+                .anyMatch(index -> {
+                    Document key = (Document) index.get("key");
+                    return key != null && key.containsKey(indexField);
+                });
+
+        if (!ttlExists) {
+            logger.info("TTL index does not exist on field: {} for collection: {}. Creating...", indexField, message.getConsumerGroup());
+            IndexOptions indexOptions = new IndexOptions().expireAfter(expireMinutes, TimeUnit.MINUTES);
+            collection.createIndex(new Document(indexField, 1), indexOptions);
+            logger.info("TTL index created on field: {} for collection: {}", indexField, message.getConsumerGroup());
+        } else {
+            logger.info("TTL index already exists on field: {} for collection: {}", indexField, message.getConsumerGroup());
+        }
     }
 
     public Optional<Message> pop(String consumerGroup) {
@@ -43,7 +76,7 @@ public class MessageService {
     }
 
     public List<Message> view(String consumerGroup, String processed) {
-        logger.info("Viewing all messages in the Queue for Consumer Group: {}. Filter by processed: {}", consumerGroup, processed);
+        logger.info("Viewing all messages in the Queue for Consumer Group: {}. Filter by processed: {}", consumerGroup, StringUtils.isEmpty(processed) ? "" : processed);
         Query query = new Query();
         query.addCriteria(Criteria.where("consumerGroup").is(consumerGroup));
 

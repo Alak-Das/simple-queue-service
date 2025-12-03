@@ -11,6 +11,8 @@ import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoDatabase;
 
 import java.util.Collections;
 import java.util.List;
@@ -25,6 +27,9 @@ class MessageServiceTest {
 
     @Mock
     private MongoTemplate mongoTemplate;
+
+    @Mock
+    private MongoClient mongoClient;
 
     @InjectMocks
     private MessageService messageService;

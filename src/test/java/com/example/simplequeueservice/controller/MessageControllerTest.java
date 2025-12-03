@@ -22,7 +22,6 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.mockito.ArgumentMatchers.any;
 
 @WebMvcTest(MessageController.class)
 @Import(SecurityConfig.class)
@@ -42,7 +41,8 @@ public class MessageControllerTest {
         when(messageService.push(any(Message.class))).thenReturn(message);
 
         mockMvc.perform(post("/queue/push")
-                .header("consumerGroup", "testGroup")
+                .header("consumerGroup", "t" +
+                        "estGroup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonContent)
                 .with(csrf()))
@@ -96,17 +96,29 @@ public class MessageControllerTest {
 
     @Test
     @WithMockUser(username = "admin", password = "adminpassword", roles = {"ADMIN", "USER"})
-    public void testViewAsAdmin() throws Exception {
+    public void testViewAsAdminWithoutProcessedHeader() throws Exception {
         when(messageService.view(anyString(), anyString())).thenReturn(Arrays.asList(new Message("someId", "testGroup", "Test message")));
 
         mockMvc.perform(get("/queue/view")
                 .header("consumerGroup", "testGroup"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", password = "adminpassword", roles = {"ADMIN", "USER"})
+    public void testViewAsAdminWithProcessedYes() throws Exception {
+        when(messageService.view(anyString(), anyString())).thenReturn(Arrays.asList(new Message("someId", "testGroup", "Test message")));
 
         mockMvc.perform(get("/queue/view")
                 .header("consumerGroup", "testGroup")
                 .header("processed", "yes"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", password = "adminpassword", roles = {"ADMIN", "USER"})
+    public void testViewAsAdminWithProcessedNo() throws Exception {
+        when(messageService.view(anyString(), anyString())).thenReturn(Arrays.asList(new Message("someId", "testGroup", "Test message")));
 
         mockMvc.perform(get("/queue/view")
                 .header("consumerGroup", "testGroup")
