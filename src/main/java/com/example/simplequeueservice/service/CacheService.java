@@ -4,6 +4,10 @@ import com.example.simplequeueservice.model.Message;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.Collections;
+
 @Service
 public class CacheService {
 
@@ -25,4 +29,15 @@ public class CacheService {
         return (Message) redisTemplate.opsForList().rightPop(key);
     }
 
+    public List<Message> viewMessages(String consumerGroup) {
+        String key = CACHE_PREFIX + consumerGroup;
+        List<Object> cachedObjects = redisTemplate.opsForList().range(key, 0, -1);
+        if (cachedObjects == null || cachedObjects.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return cachedObjects.stream()
+                .filter(obj -> obj instanceof Message)
+                .map(obj -> (Message) obj)
+                .collect(java.util.stream.Collectors.toList());
+    }
 }

@@ -83,6 +83,20 @@ public class MessageService {
 
     public List<Message> view(String consumerGroup, String processed) {
         logger.info("Viewing all messages in the Queue for Consumer Group: {}. Filter by processed: {}", consumerGroup, StringUtils.isEmpty(processed) ? "" : processed);
+
+        List<Message> combinedMessages = new java.util.ArrayList<>();
+
+        // Retrieve messages from cache
+        List<Message> cachedMessages = cacheService.viewMessages(consumerGroup);
+        if (cachedMessages != null && !cachedMessages.isEmpty()) {
+            logger.info("Messages found in cache for Consumer Group: {}.", consumerGroup);
+            combinedMessages.addAll(cachedMessages);
+        } else {
+            logger.info("No messages found in cache for Consumer Group: {}.", consumerGroup);
+        }
+
+        // Fetch messages from MongoDB
+        logger.info("Fetching messages from MongoDB for Consumer Group: {}.", consumerGroup);
         Query query = new Query();
         query.addCriteria(Criteria.where("consumerGroup").is(consumerGroup));
 
@@ -93,7 +107,20 @@ public class MessageService {
                 query.addCriteria(Criteria.where("processed").is(false));
             }
         }
-        return mongoTemplate.find(query, Message.class, consumerGroup);
+        List<Message> mongoMessages = mongoTemplate.find(query, Message.class, consumerGroup);
+        if (mongoMessages != null && !mongoMessages.isEmpty()) {
+            logger.info("Messages found in MongoDB for Consumer Group: {}.", consumerGroup);
+            combinedMessages.addAll(mongoMessages);
+        } else {
+            logger.info("No messages found in MongoDB for Consumer Group: {}.", consumerGroup);
+        }
+
+        // Use a Set to remove duplicates (if Message class properly implements equals and hashCode)
+        java.util.Set<Message> uniqueMessages = new java.util.HashSet<>(combinedMessages);
+        List<Message> result = new java.util.ArrayList<>(uniqueMessages);
+
+        logger.info("Returning a combined list of {} unique messages for Consumer Group: {}", result.size(), consumerGroup);
+        return result;
     }
 
     private void updateMessageInMongo(String messageId, String consumerGroup, boolean processed) {
