@@ -9,6 +9,7 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -36,6 +38,9 @@ public class MessageService {
 
     @Autowired
     private CacheService cacheService;
+    @Autowired
+    @Qualifier("taskExecutor")
+    private Executor taskExecutor;
 
     private static final String indexField = "createdAt";
 
@@ -58,6 +63,10 @@ public class MessageService {
         Message cachedMessage = cacheService.popMessage(consumerGroup);
         if (cachedMessage != null) {
             logger.info("Message found in cache for Consumer Group: {}", consumerGroup);
+            taskExecutor.execute(() -> {
+                logger.info("Asynchronously updating message as processed=true for Consumer Group: {}", consumerGroup);
+                updateMessageInMongo(cachedMessage.getId(), consumerGroup, true);
+            });
             return Optional.of(cachedMessage);
         }
 
@@ -85,6 +94,13 @@ public class MessageService {
             }
         }
         return mongoTemplate.find(query, Message.class, consumerGroup);
+    }
+
+    private void updateMessageInMongo(String messageId, String consumerGroup, boolean processed) {
+        Query query = new Query(Criteria.where("id").is(messageId));
+        Update update = new Update().set("processed", true);
+        mongoTemplate.updateFirst(query, update, Message.class, consumerGroup);
+        logger.info("Message with ID: {} in Consumer Group: {} updated to processed: {}", messageId, consumerGroup, processed);
     }
 
     private void createTTLIndex(Message message) {

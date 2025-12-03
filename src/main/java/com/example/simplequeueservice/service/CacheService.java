@@ -24,4 +24,5 @@ public class CacheService {
         String key = CACHE_PREFIX + consumerGroup;
         return (Message) redisTemplate.opsForList().rightPop(key);
     }
+
 }
