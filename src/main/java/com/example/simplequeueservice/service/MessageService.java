@@ -29,24 +29,39 @@ public class MessageService {
     MongoClient mongoClient;
     @Value("${spring.data.mongodb.database}")
     private String mongoDB;
-    @Value("${message.expiry.minutes}")
+    @Value("${mongodb.persistence.duration.minutes}")
     private long expireMinutes;
     @Autowired
     private MongoTemplate mongoTemplate;
+
+    @Autowired
+    private CacheService cacheService;
 
     private static final String indexField = "createdAt";
 
     private static final Logger logger = LoggerFactory.getLogger(MessageService.class);
 
     public Message push(Message message) {
+        // Save the Message to Cache
+        cacheService.addMessage(message);
+
+        // Save the Message to Persistence Storage
         createTTLIndex(message);
         logger.info("Saving message with content: {} to Consumer Group: {}", message.getContent(), message.getConsumerGroup());
+
         return mongoTemplate.save(message, message.getConsumerGroup());
     }
 
     public Optional<Message> pop(String consumerGroup) {
         logger.info("Popping oldest message from the Queue for Consumer Group: {}", consumerGroup);
 
+        Message cachedMessage = cacheService.popMessage(consumerGroup);
+        if (cachedMessage != null) {
+            logger.info("Message found in cache for Consumer Group: {}", consumerGroup);
+            return Optional.of(cachedMessage);
+        }
+
+        logger.info("Message not found in cache for Consumer Group: {}. Fetching from DB", consumerGroup);
         Query query = new Query(Criteria.where("processed").is(false))
                 .with(Sort.by(Sort.Direction.ASC, "createdAt"));
         Update update = new Update().set("processed", true);
