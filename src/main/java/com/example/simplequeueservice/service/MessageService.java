@@ -19,8 +19,11 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
@@ -84,7 +87,7 @@ public class MessageService {
     public List<Message> view(String consumerGroup, String processed) {
         logger.info("Viewing all messages in the Queue for Consumer Group: {}. Filter by processed: {}", consumerGroup, StringUtils.isEmpty(processed) ? "" : processed);
 
-        List<Message> combinedMessages = new java.util.ArrayList<>();
+        List<Message> combinedMessages = new ArrayList<>();
 
         // Retrieve messages from cache
         List<Message> cachedMessages = cacheService.viewMessages(consumerGroup);
@@ -116,8 +119,8 @@ public class MessageService {
         }
 
         // Use a Set to remove duplicates (if Message class properly implements equals and hashCode)
-        java.util.Set<Message> uniqueMessages = new java.util.HashSet<>(combinedMessages);
-        List<Message> result = new java.util.ArrayList<>(uniqueMessages);
+        Set<Message> uniqueMessages = new HashSet<>(combinedMessages);
+        List<Message> result = new ArrayList<>(uniqueMessages);
 
         logger.info("Returning a combined list of {} unique messages for Consumer Group: {}", result.size(), consumerGroup);
         return result;
@@ -133,7 +136,7 @@ public class MessageService {
     private void createTTLIndex(Message message) {
         MongoCollection<Document> collection = mongoClient.getDatabase(mongoDB).getCollection(message.getConsumerGroup());
         boolean ttlExists = collection.listIndexes()
-                .into(new java.util.ArrayList<>())
+                .into(new ArrayList<>())
                 .stream()
                 .anyMatch(index -> {
                     Document key = (Document) index.get("key");
