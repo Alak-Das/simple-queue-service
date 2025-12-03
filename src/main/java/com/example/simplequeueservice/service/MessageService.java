@@ -31,7 +31,7 @@ public class MessageService {
     MongoClient mongoClient;
     @Value("${spring.data.mongodb.database}")
     private String mongoDB;
-    @Value("${mongodb.persistence.duration.minutes}")
+    @Value("${persistence.duration.minutes}")
     private long expireMinutes;
     @Autowired
     private MongoTemplate mongoTemplate;

@@ -19,7 +19,7 @@ import java.util.Collections;
 @Configuration
 public class RedisConfig {
 
-    @Value("${redis.cache.ttl.minutes}")
+    @Value("${cache.ttl.minutes}")
     private long redisCacheTtlMinutes;
 
     @Bean
