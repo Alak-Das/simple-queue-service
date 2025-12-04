@@ -13,9 +13,6 @@ public class SQSConstants {
     public static final String PUSH_URL = "/push";
     public static final String POP_URL = "/pop";
     public static final String VIEW_URL = "/view";
-    public static final String QUEUE_PUSH_URL = QUEUE_BASE_URL + PUSH_URL;
-    public static final String QUEUE_POP_URL = QUEUE_BASE_URL + POP_URL;
-    public static final String QUEUE_VIEW_URL = QUEUE_BASE_URL + VIEW_URL;
     public static final String USER_ROLE = "USER";
     public static final String ADMIN_ROLE = "ADMIN";
     public static final String HAS_ADMIN_ROLE = "hasRole(\'ADMIN\')";
