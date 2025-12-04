@@ -602,9 +602,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Support
 
 For questions or support:
-- 📧 Email: [support@example.com](mailto:support@example.com)
-- 💬 Slack: [Join our channel](https://example.slack.com)
-- 🐛 Issues: [GitHub Issues](https://github.com/your-repo/issues)
+- 📧 Email: [alakdas.mail@gmail.com](mailto:alakdas.mail@gmail.com)
+- 🐛 Issues: [GitHub Issues](https://github.com/Alak-Das/simple-queue-service/issues)
 
 ---
 
