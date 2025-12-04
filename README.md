@@ -35,7 +35,7 @@ The Simple Queue Service acts as a central message broker for applications requi
 graph TD
     A[Producer Application] -->|Push Message| B(Simple Queue Service)
     B -->|Add to Cache (Redis)| C[Redis]
-    B -->|Persist Async (MongoDB)| D[MongoDB Database]
+    B -->|Persist Async (MongoDB)| D[MongoDB]
     E[Consumer Application] -->|Pop/View Messages| B
     B -->|Retrieve from Cache (Redis)| C
     B -->|Retrieve from DB (MongoDB)| D
