@@ -1,319 +1,611 @@
 # Simple Queue Service
 
-This project implements a simple, lightweight message queue service using Spring Boot, designed to handle message pushing, popping, and viewing operations with support for consumer groups, caching, and persistent storage.
+A lightweight, high-performance message queue service built with Spring Boot, providing RESTful APIs for asynchronous message processing with support for consumer groups, Redis caching, and MongoDB persistence.
+
+[![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://www.oracle.com/java/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![Redis](https://img.shields.io/badge/Redis-Cache-red.svg)](https://redis.io/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Database-green.svg)](https://www.mongodb.com/)
 
 ## Table of Contents
-1.  [Project Overview](#project-overview)
-2.  [High-Level Design (HLD) Document](#high-level-design-hld-document)
-3.  [Low-Level Design (LLD) Document](#low-level-design-lld-document)
-4.  [Architecture Design Document](#architecture-design-document)
-5.  [Database Design Document](#database-design-document)
-6.  [API Design Document](#api-design-document)
+1.  [Project Overview](#1-project-overview)
+2.  [Key Features](#2-key-features)
+3.  [Architecture Overview](#3-architecture-overview)
+4.  [Technology Stack](#4-technology-stack)
+5.  [Getting Started](#5-getting-started)
+6.  [API Documentation](#6-api-documentation)
+7.  [Design Documents](#7-design-documents)
+8.  [Performance Considerations](#8-performance-considerations)
+9.  [Security](#9-security)
+10. [Troubleshooting](#10-troubleshooting)
+11. [Contributing](#11-contributing)
+12. [License](#12-license)
 
 ## 1. Project Overview
 
-The Simple Queue Service is a Spring Boot application that provides a RESTful API for managing messages in a queue-like fashion. It supports multiple consumer groups, allowing messages to be isolated and processed independently. The service leverages Redis for fast in-memory caching and MongoDB for persistent storage, ensuring both performance and data durability. Asynchronous processing is utilized for non-critical operations like database persistence to enhance responsiveness.
+The Simple Queue Service is a production-ready Spring Boot application that implements a distributed message queue system. It enables asynchronous communication between producers and consumers through a RESTful API, with support for multiple isolated consumer groups.
 
-### Key Features:
-*   **Message Pushing:** Add messages to a specific consumer group's queue.
-*   **Message Popping:** Retrieve and mark messages as consumed from a consumer group's queue.
-*   **Message Viewing:** Inspect messages within a consumer group, with options to filter by consumption status.
-*   **Consumer Groups:** Isolate message streams for different consumers.
-*   **Caching:** Uses Redis for quick access to recently pushed/unconsumed messages.
-*   **Persistence:** Stores all messages in MongoDB with a Time-To-Live (TTL) mechanism for automatic data cleanup.
-*   **Asynchronous Operations:** Decouples API responses from database write operations for improved performance.
-*   **Security:** Basic authentication with user and admin roles to control API access.
-*   **API Documentation:** Integrated Swagger UI for interactive API exploration.
+### Use Cases
 
-## 2. High-Level Design (HLD) Document
+- **Microservices Communication**: Decouple services with asynchronous messaging
+- **Task Queue Management**: Distribute work across multiple consumers
+- **Event Processing**: Handle events with guaranteed delivery and processing
+- **Load Leveling**: Buffer requests during traffic spikes
+- **Background Job Processing**: Queue long-running tasks for asynchronous execution
 
-### 2.1. System Context
+## 2. Key Features
 
-The Simple Queue Service acts as a central message broker for applications requiring asynchronous communication. Producers push messages to the service, and Consumers pull messages from it. The service interacts with Redis for caching and MongoDB for long-term storage.
+### Core Functionality
+- ✅ **Message Pushing**: Add messages to consumer-specific queues
+- ✅ **Message Popping**: Retrieve and automatically mark messages as consumed
+- ✅ **Message Viewing**: Inspect queue contents with filtering options
+- ✅ **Consumer Groups**: Isolated message streams for multi-tenant scenarios
+
+### Performance & Reliability
+- ⚡ **Redis Caching**: Sub-millisecond message retrieval for hot data
+- 💾 **MongoDB Persistence**: Durable storage with automatic TTL cleanup
+- 🔄 **Asynchronous Processing**: Non-blocking database operations
+- 📊 **Scalable Design**: Horizontal scaling support via external data stores
+
+### Operations & Security
+- 🔐 **Role-Based Access Control**: User and Admin roles with HTTP Basic Auth
+- 📝 **API Documentation**: Interactive Swagger UI
+- 🐳 **Docker Support**: Containerized deployment ready
+- 📈 **Production Ready**: Exception handling, logging, and monitoring hooks
+
+## 3. Architecture Overview
+
+### System Architecture
 
 ```mermaid
-graph TD
-    A[Producer Application] -->|Push Message| B(Simple Queue Service)
-    B -->|Add to Cache (Redis)| C[Redis]
-    B -->|Persist Async (MongoDB)| D[MongoDB]
-    E[Consumer Application] -->|Pop/View Messages| B
-    B -->|Retrieve from Cache (Redis)| C
-    B -->|Retrieve from DB (MongoDB)| D
-    SubGraph External Systems
-        A
-        E
-    End
+graph TB
+    subgraph "Client Applications"
+        P[Producer]
+        C[Consumer]
+    end
+    
+    subgraph "Simple Queue Service"
+        API[REST API Layer<br/>MessageController]
+        SVC[Service Layer<br/>Push/Pop/View Services]
+        CACHE[Cache Service<br/>Redis Abstraction]
+    end
+    
+    subgraph "Data Layer"
+        R[(Redis<br/>In-Memory Cache)]
+        M[(MongoDB<br/>Persistent Storage)]
+    end
+    
+    P -->|POST /queue/push| API
+    C -->|GET /queue/pop| API
+    C -->|GET /queue/view| API
+    
+    API --> SVC
+    SVC --> CACHE
+    SVC -.->|Async Write| M
+    CACHE --> R
+    SVC --> M
+    
+    style API fill:#e1f5ff
+    style SVC fill:#fff4e1
+    style CACHE fill:#ffe1e1
+    style R fill:#ffcccc
+    style M fill:#ccffcc
 ```
 
-### 2.2. High-Level Components
+### Data Flow
 
-1.  **REST API Layer (MessageController):** Exposes endpoints for `push`, `pop`, and `view` operations.
-2.  **Service Layer (PushMessageService, PopMessageService, ViewMessageService, CacheService):** Contains the core business logic for message handling, caching, and database interactions.
-3.  **Caching Layer (Redis):** Provides fast in-memory storage for messages, improving read/write performance for active queues.
-4.  **Persistence Layer (MongoDB):** Stores all messages for durability and supports queries for viewing messages, with a TTL mechanism.
-5.  **Security Layer (SecurityConfig):** Handles authentication and authorization for API access.
-6.  **Asynchronous Processing (AsyncConfig):** Manages a thread pool for offloading non-critical tasks like database writes.
+#### Push Operation
+```
+Client → Controller → Service → [Redis Cache + MongoDB (Async)] → Response
+```
 
-### 2.3. Data Flow
+#### Pop Operation (Cache Hit)
+```
+Client → Controller → Service → Redis Cache → Response + MongoDB Update (Async)
+```
 
-*   **Push Message:**
-    1.  Client sends a `POST /queue/push` request with `consumerGroup` header and message content.
-    2.  `MessageController` receives the request.
-    3.  `PushMessageService` adds the message to Redis cache.
-    4.  `PushMessageService` asynchronously saves the message to MongoDB (creating a TTL index if necessary).
-    5.  Service returns `MessageResponse`.
+#### Pop Operation (Cache Miss)
+```
+Client → Controller → Service → MongoDB (Find & Update) → Response
+```
 
-*   **Pop Message:**
-    1.  Client sends a `GET /queue/pop` request with `consumerGroup` header.
-    2.  `MessageController` receives the request.
-    3.  `PopMessageService` attempts to retrieve the oldest message from Redis cache.
-    4.  If found in Redis, it's returned immediately, and `PopMessageService` asynchronously marks it as consumed in MongoDB.
-    5.  If not found in Redis, `PopMessageService` retrieves the oldest unconsumed message from MongoDB, marks it as consumed, and returns it.
-    6.  Service returns `MessageResponse` or 404.
+## 4. Technology Stack
 
-*   **View Messages:**
-    1.  Client sends a `GET /queue/view` request with `consumerGroup` header, `messageCount`, and optional `consumed` status.
-    2.  `MessageController` receives the request and validates `messageCount`.
-    3.  `ViewMessageService` retrieves messages from both Redis cache (for unconsumed) and MongoDB (for all, or consumed/unconsumed).
-    4.  Messages are combined, deduplicated, sorted by `createdAt`, and limited by `messageCount`.
-    5.  Service returns a list of `Message` objects.
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Framework** | Spring Boot 3.x (Java 21) | Core application framework |
+| **Web** | Spring Web | RESTful API endpoints |
+| **Cache** | Redis + Spring Data Redis | High-speed message caching |
+| **Database** | MongoDB + Spring Data MongoDB | Persistent message storage |
+| **Security** | Spring Security | Authentication & authorization |
+| **Async** | Spring Async | Non-blocking operations |
+| **Documentation** | Springdoc OpenAPI (Swagger) | API documentation |
+| **Utilities** | Lombok, Apache Commons Lang3 | Code simplification |
+| **Container** | Docker | Deployment packaging |
 
-## 3. Low-Level Design (LLD) Document
+## 5. Getting Started
 
-### 3.1. Class Diagram (Core Components)
+### Prerequisites
+
+- **Java 21** or higher ([Download](https://adoptium.net/))
+- **Maven 3.6+** ([Download](https://maven.apache.org/download.cgi))
+- **Redis 6.0+** ([Installation Guide](https://redis.io/docs/getting-started/installation/))
+- **MongoDB 5.0+** ([Installation Guide](https://www.mongodb.com/docs/manual/installation/))
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd simple-queue-service
+   ```
+
+2. **Configure application properties**
+
+   Edit `src/main/resources/application.properties`:
+   ```properties
+   # Redis Configuration
+   spring.data.redis.host=localhost
+   spring.data.redis.port=6379
+   cache.ttl.minutes=60
+   
+   # MongoDB Configuration
+   spring.data.mongodb.host=localhost
+   spring.data.mongodb.port=27017
+   spring.data.mongodb.database=queuedb
+   persistence.duration.minutes=1440
+   
+   # Security
+   spring.security.user.name=user
+   spring.security.user.password=password
+   admin.username=admin
+   admin.password=adminpassword
+   
+   # API Configuration
+   no.of.message.allowed.to.fetch=100
+   ```
+
+3. **Build the application**
+   ```bash
+   mvn clean install
+   ```
+
+4. **Run the application**
+   ```bash
+   mvn spring-boot:run
+   ```
+
+   Or run the JAR directly:
+   ```bash
+   java -jar target/simple-queue-service-1.0.0.jar
+   ```
+
+### Docker Deployment
+
+1. **Build Docker image**
+   ```bash
+   docker build -t simple-queue-service:latest .
+   ```
+
+2. **Run with Docker Compose** (create `docker-compose.yml`):
+   ```yaml
+   version: '3.8'
+   services:
+     redis:
+       image: redis:7-alpine
+       ports:
+         - "6379:6379"
+     
+     mongodb:
+       image: mongo:6
+       ports:
+         - "27017:27017"
+       environment:
+         MONGO_INITDB_DATABASE: queuedb
+     
+     queue-service:
+       image: simple-queue-service:latest
+       ports:
+         - "8080:8080"
+       depends_on:
+         - redis
+         - mongodb
+       environment:
+         SPRING_DATA_REDIS_HOST: redis
+         SPRING_DATA_MONGODB_HOST: mongodb
+   ```
+
+3. **Start services**
+   ```bash
+   docker-compose up -d
+   ```
+
+### Verify Installation
+
+Access the Swagger UI at: `http://localhost:8080/swagger-ui.html`
+
+## 6. API Documentation
+
+### Base URL
+```
+http://localhost:8080/queue
+```
+
+### Authentication
+
+All endpoints require HTTP Basic Authentication:
+
+| Role | Username | Password | Permissions |
+|------|----------|----------|-------------|
+| User | `user` | `password` | Push, Pop |
+| Admin | `admin` | `adminpassword` | Push, Pop, View |
+
+### Endpoints
+
+#### 1. Push Message
+
+Add a new message to a consumer group's queue.
+
+```http
+POST /queue/push
+Content-Type: text/plain
+consumerGroup: my-consumer-group
+Authorization: Basic dXNlcjpwYXNzd29yZA==
+
+Hello, World!
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "content": "Hello, World!",
+  "createdAt": "2024-12-05T10:30:00"
+}
+```
+
+#### 2. Pop Message
+
+Retrieve and consume the oldest message from a queue.
+
+```http
+GET /queue/pop
+consumerGroup: my-consumer-group
+Authorization: Basic dXNlcjpwYXNzd29yZA==
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "content": "Hello, World!",
+  "createdAt": "2024-12-05T10:30:00"
+}
+```
+
+**Response (404 Not Found):** No messages available
+
+#### 3. View Messages (Admin Only)
+
+Inspect messages in a queue without consuming them.
+
+```http
+GET /queue/view
+consumerGroup: my-consumer-group
+messageCount: 10
+consumed: false
+Authorization: Basic YWRtaW46YWRtaW5wYXNzd29yZA==
+```
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "content": "Hello, World!",
+    "consumerGroup": "my-consumer-group",
+    "createdAt": "2024-12-05T10:30:00",
+    "consumed": false
+  }
+]
+```
+
+### Error Responses
+
+All errors follow this structure:
+```json
+{
+  "timestamp": "2024-12-05T10:30:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Consumer group header is required",
+  "path": "/queue/push"
+}
+```
+
+## 7. Design Documents
+
+### High-Level Design (HLD)
+
+#### System Components
+
+1. **REST API Layer**: Handles HTTP requests/responses, validation
+2. **Service Layer**: Business logic for push, pop, view operations
+3. **Cache Layer**: Redis-based fast access to recent messages
+4. **Persistence Layer**: MongoDB for durable storage with TTL
+5. **Security Layer**: Authentication and authorization
+6. **Async Layer**: Thread pool for non-blocking operations
+
+### Low-Level Design (LLD)
+
+#### Class Diagram
 
 ```mermaid
 classDiagram
     class MessageController {
-        +MessageResponse push(String consumerGroup, String content)
-        +ResponseEntity<MessageResponse> pop(String consumerGroup)
-        +ResponseEntity<?> view(String consumerGroup, int messageCount, String consumed)
+        +MessageResponse push(String, String)
+        +ResponseEntity~MessageResponse~ pop(String)
+        +ResponseEntity~List~ view(String, int, String)
     }
+    
     class PushMessageService {
-        -MongoClient mongoClient
         -MongoTemplate mongoTemplate
         -CacheService cacheService
         -Executor taskExecutor
-        +Message push(Message message)
-        -void createTTLIndex(Message message)
+        +Message push(Message)
+        -void createTTLIndex(Message)
     }
+    
     class PopMessageService {
         -MongoTemplate mongoTemplate
         -CacheService cacheService
         -Executor taskExecutor
-        +Optional<Message> pop(String consumerGroup)
-        -void updateMessageInMongo(String messageId, String consumerGroup)
+        +Optional~Message~ pop(String)
+        -void updateMessageInMongo(String, String)
     }
+    
     class ViewMessageService {
         -MongoTemplate mongoTemplate
         -CacheService cacheService
-        +List<Message> view(String consumerGroup, int messageCount, String consumed)
+        +List~Message~ view(String, int, String)
     }
+    
     class CacheService {
-        -RedisTemplate<String, Object> redisTemplate
-        +void addMessage(Message message)
-        +Message popMessage(String consumerGroup)
-        +List<Message> viewMessages(String consumerGroup)
+        -RedisTemplate redisTemplate
+        +void addMessage(Message)
+        +Message popMessage(String)
+        +List~Message~ viewMessages(String)
     }
+    
     class Message {
         +String id
         +String content
         +String consumerGroup
         +Date createdAt
         +boolean consumed
-        +Message markConsumed()
     }
-    class MessageResponse {
-        +String id
-        +String content
-        +LocalDateTime createdAt
-    }
-    class ErrorResponse {
-        +LocalDateTime timestamp
-        +int status
-        +String error
-        +String message
-        +String path
-    }
-    class GlobalExceptionHandler {
-        +ResponseEntity<ErrorResponse> handleException(Exception ex, HttpServletRequest request)
-        +ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex, HttpServletRequest request)
-    }
-
+    
     MessageController --> PushMessageService
     MessageController --> PopMessageService
     MessageController --> ViewMessageService
-    PushMessageService --> Message
     PushMessageService --> CacheService
-    PushMessageService --> taskExecutor
-    PopMessageService --> Message
     PopMessageService --> CacheService
-    PopMessageService --> taskExecutor
-    ViewMessageService --> Message
     ViewMessageService --> CacheService
-    CacheService --> Message
-    MessageResponse ..< Message
-    GlobalExceptionHandler ..> ErrorResponse
 ```
 
-### 3.2. Detailed Component Descriptions
+### Database Design
 
-*   **`MessageController`:** Handles incoming HTTP requests, delegates to appropriate service methods, and returns `MessageResponse` or error responses. Performs basic request validation.
-*   **`PushMessageService`:** Orchestrates message pushing. Adds messages to Redis (left push to list) and then asynchronously saves to MongoDB. It ensures a TTL index exists on the `createdAt` field for each `consumerGroup` collection in MongoDB.
-*   **`PopMessageService`:** Manages message popping. Prioritizes fetching from Redis (right pop from list). If a message is retrieved from Redis, it's immediately returned, and an asynchronous task marks it as `consumed` in MongoDB. If Redis is empty, it queries MongoDB for the oldest `unconsumed` message, marks it `consumed` (using `findAndModify` for atomicity), and returns it.
-*   **`ViewMessageService`:** Handles message viewing. Retrieves messages from both Redis (unconsumed) and MongoDB (all or filtered). It deduplicates messages and sorts them by `createdAt` before returning a limited list.
-*   **`CacheService`:** An abstraction over Redis operations. Provides methods to `addMessage` (left push), `popMessage` (right pop), and `viewMessages` (range query) from Redis lists, managing the `consumerGroupMessages:{consumerGroup}` keys with a configured TTL.
-*   **`Message` (Model):** Represents a message in the queue. Contains `id`, `content`, `consumerGroup`, `createdAt`, and a `consumed` flag. Implements `Serializable` for Redis caching and has an `equals`/`hashCode` based on `id`.
-*   **`MessageResponse` (DTO):** A data transfer object used for API responses, containing `id`, `content`, and `createdAt` (converted to `LocalDateTime`).
-*   **`ErrorResponse` (DTO):** Standardized error response structure for API clients.
-*   **`GlobalExceptionHandler`:** Centralized error handling for the application, mapping exceptions to appropriate HTTP status codes and `ErrorResponse` payloads.
+#### MongoDB Schema
 
-## 4. Architecture Design Document
+**Collection Naming**: `{consumerGroup}` (e.g., `payments-queue`, `notifications-queue`)
 
-### 4.1. Architectural Style
-
-The Simple Queue Service adopts a **Monolithic Service Architecture** with clear separation of concerns into distinct layers. While monolithic, it incorporates aspects of a **Layered Architecture** and leverages external services (Redis, MongoDB) for specialized functions, moving towards a **Service-Oriented** approach for data storage and caching.
-
-### 4.2. System Layers
-
-1.  **Presentation/API Layer:** Handled by `MessageController`, responsible for exposing RESTful endpoints and request/response serialization/deserialization. Uses Spring Web and Swagger for documentation.
-2.  **Service/Business Logic Layer:** Contains the core application logic within `PushMessageService`, `PopMessageService`, and `ViewMessageService`. This layer orchestrates interactions with the data and cache layers.
-3.  **Data Access Layer (DAL):** Abstracted by Spring Data MongoDB (`MongoTemplate`) for persistent storage and `CacheService` (using `RedisTemplate`) for caching. This layer is responsible for interacting with MongoDB and Redis.
-4.  **Configuration Layer:** Includes `AsyncConfig`, `RedisConfig`, and `SecurityConfig` to set up and manage infrastructure-related beans and configurations.
-
-### 4.3. Technologies Used
-
-*   **Core Framework:** Spring Boot (Java 21)
-*   **Web:** Spring Web (RESTful API)
-*   **Persistence:** Spring Data MongoDB, MongoDB
-*   **Caching:** Spring Data Redis, Redis
-*   **Asynchronous Processing:** Spring Async, `ThreadPoolTaskExecutor`
-*   **Security:** Spring Security (HTTP Basic, In-Memory UserDetailsService)
-*   **API Documentation:** Springdoc OpenAPI (Swagger UI)
-*   **Utilities:** Lombok, Apache Commons Lang3
-
-### 4.4. Deployment Strategy
-
-The application is packaged as a Spring Boot executable JAR. It can be deployed as a standalone application. A `Dockerfile` is provided, indicating containerization using Docker for easier deployment and scalability. The service requires external Redis and MongoDB instances to be running and accessible.
-
-## 5. Database Design Document
-
-### 5.1. Data Stores
-
-1.  **MongoDB (Primary Persistence):** Used for durable storage of all messages. Each consumer group has its own collection, allowing for logical separation and efficient querying within a group. Messages have a TTL index on the `createdAt` field for automatic cleanup after `persistence.duration.minutes`.
-2.  **Redis (Cache):** Used as a high-speed, in-memory cache for recent and unconsumed messages. Messages for each consumer group are stored in a Redis List (`consumerGroupMessages:{consumerGroup}`), enabling fast FIFO operations (push/pop). Each Redis key (consumer group list) has a TTL of `cache.ttl.minutes`.
-
-### 5.2. MongoDB Schema (Implicit)
-
-Although explicit schema definitions are less common in NoSQL databases like MongoDB, the `Message` class defines the structure of documents stored in MongoDB collections. Each collection is named after a `consumerGroup`.
-
-**Collection Name:** `{consumerGroup}` (e.g., `my-consumer-group-1`)
-
-**Document Structure (Message):**
-
+**Document Structure**:
 ```json
 {
-  "_id": "UUID_STRING",         // Unique message identifier (String)
-  "content": "Message Payload",   // Content of the message (String)
-  "consumerGroup": "group-name",  // Consumer group this message belongs to (String)
-  "createdAt": ISODate("..."),    // Timestamp of message creation (Date)
-  "consumed": false             // Boolean flag, true if consumed (Boolean)
+  "_id": "uuid-string",
+  "content": "message payload",
+  "consumerGroup": "group-name",
+  "createdAt": ISODate("2024-12-05T10:30:00Z"),
+  "consumed": false
 }
 ```
 
-**Indexes:**
+**Indexes**:
+- `_id`: Primary key (unique)
+- `createdAt`: TTL index (auto-deletion after configured minutes)
+- `consumed`: Regular index (filter unconsumed messages)
 
-*   **`_id` index:** Default primary key index (unique).
-*   **`createdAt` TTL index:** `{"createdAt": 1}` with `expireAfterSeconds` set based on `persistence.duration.minutes`. This index is dynamically created per consumer group collection by `PushMessageService`.
-*   **`consumed` index:** A regular index on `{"consumed": 1}` to efficiently query unconsumed or consumed messages.
+#### Redis Data Structure
 
-### 5.3. Redis Data Structure
+**Key Pattern**: `consumerGroupMessages:{consumerGroup}`
 
-Redis stores messages as lists, one list per consumer group.
+**Data Type**: List (FIFO queue)
 
-**Key Pattern:** `consumerGroupMessages:{consumerGroup}` (e.g., `consumerGroupMessages:my-consumer-group-1`)
+**Operations**:
+- Push: `LPUSH` (left push - add to head)
+- Pop: `RPOP` (right pop - remove from tail)
+- View: `LRANGE` (range query)
 
-**Value Type:** List of `Message` objects (serialized as JSON).
+**TTL**: Configured via `cache.ttl.minutes`
 
-**Example (Key: `consumerGroupMessages:my-group`):**
+## 8. Performance Considerations
 
-```
-[ 
-  { id: "msg1", content: "Hello", consumerGroup: "my-group", createdAt: "...", consumed: false },
-  { id: "msg2", content: "World", consumerGroup: "my-group", createdAt: "...", consumed: false }
-]
-```
+### Caching Strategy
 
-## 6. API Design Document
+- **Write-Through Cache**: Messages written to Redis immediately, MongoDB asynchronously
+- **Cache First Read**: Pop operations check Redis before MongoDB
+- **TTL Management**: Automatic expiration prevents memory bloat
 
-### 6.1. Base URL
+### Optimization Tips
 
-`/queue`
+1. **Tune Thread Pool**: Adjust `AsyncConfig` executor settings based on load
+   ```java
+   executor.setCorePoolSize(10);
+   executor.setMaxPoolSize(50);
+   executor.setQueueCapacity(500);
+   ```
 
-### 6.2. Authentication
+2. **Redis Connection Pooling**: Configure `RedisTemplate` with connection pool
+3. **MongoDB Indexes**: Ensure indexes exist on high-query fields
+4. **Message Size**: Keep message payloads under 1MB for optimal performance
+5. **Consumer Groups**: Use separate groups to parallelize processing
 
-HTTP Basic Authentication is required for all endpoints. Roles are enforced as follows:
+### Scalability
 
-*   `USER` role: Can `push` and `pop` messages.
-*   `ADMIN` role: Can `push`, `pop`, and `view` messages.
+- **Horizontal Scaling**: Run multiple instances (stateless design)
+- **Redis Clustering**: Use Redis Cluster for distributed caching
+- **MongoDB Sharding**: Shard by `consumerGroup` for large-scale deployments
 
-**Default Credentials (from `application.properties`):
-**
-*   **User:** `username: user`, `password: password`
-*   **Admin:** `username: admin`, `password: adminpassword`
+## 9. Security
 
-### 6.3. Endpoints
+### Authentication Methods
 
-#### 6.3.1. Push Message
+- **HTTP Basic Auth**: Default for quick setup
+- **Recommended for Production**:
+    - JWT tokens
+    - OAuth 2.0
+    - API Keys with rate limiting
 
-*   **Endpoint:** `POST /queue/push`
-*   **Description:** Pushes a new message to the queue for a specified consumer group.
-*   **Required Role:** `USER`, `ADMIN`
-*   **Request Headers:**
-    *   `consumerGroup`: `String` (e.g., `my-consumer-group`)
-*   **Request Body:** `String` (The message content)
-*   **Response:** `200 OK`
-    ```json
-    {
-      "id": "string",
-      "content": "string",
-      "createdAt": "YYYY-MM-DDTHH:MM:SS"
+### Best Practices
+
+1. **Change Default Credentials**: Update `application.properties` before deployment
+2. **Use HTTPS**: Enable SSL/TLS in production
+3. **Network Isolation**: Deploy Redis/MongoDB in private networks
+4. **Role Separation**: Create custom roles beyond User/Admin
+5. **Audit Logging**: Enable Spring Security audit logs
+
+### Security Configuration Example
+
+```java
+@Configuration
+public class SecurityConfig {
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) {
+        return http
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/queue/push", "/queue/pop").hasAnyRole("USER", "ADMIN")
+                .requestMatchers("/queue/view").hasRole("ADMIN")
+            )
+            .httpBasic(Customizer.withDefaults())
+            .build();
     }
-    ```
-*   **Error Responses:**
-    *   `400 Bad Request`: If `consumerGroup` header is missing or empty, or message content is invalid.
-    *   `401 Unauthorized`: If authentication fails.
-    *   `403 Forbidden`: If authenticated user does not have `USER` or `ADMIN` role.
-    *   `500 Internal Server Error`: For unexpected server errors.
+}
+```
 
-#### 6.3.2. Pop Message
+## 10. Troubleshooting
 
-*   **Endpoint:** `GET /queue/pop`
-*   **Description:** Retrieves and marks as consumed the oldest available message from a specified consumer group.
-*   **Required Role:** `USER`, `ADMIN`
-*   **Request Headers:**
-    *   `consumerGroup`: `String` (e.g., `my-consumer-group`)
-*   **Response:** `200 OK` (if message found)
-    ```json
-    {
-      "id": "string",
-      "content": "string",
-      "createdAt": "YYYY-MM-DDTHH:MM:SS"
-    }
-    ```
-    `404 Not Found` (if no message available)
-*   **Error Responses:**
-    *   `400 Bad Request`: If `consumerGroup` header is missing or empty.
-    *   `401 Unauthorized`: If authentication fails.
-    *   `403 Forbidden`: If authenticated user does not have `USER` or `ADMIN` role.
-    *   `500 Internal Server Error`: For unexpected server errors.
+### Common Issues
 
-#### 6.3.3. View Messages
+#### 1. Connection Refused (Redis/MongoDB)
 
-*   **Endpoint:** `GET /queue/view`
-*   **Description:** Views a list of messages from a specified consumer group, with options to limit the count and filter by consumption status.
-*   **Required Role:** `ADMIN`
-*   **Request Headers:**
-    *   `consumerGroup`: `String` (e.g., `my-consumer-group`)
-    *   `messageCount`: `Integer` (Maximum number of messages to retrieve, must be between 1 and `no.of.message.allowed.to.fetch`)
-    *   `consumed`: `String` (Optional.
+**Problem**: Service can't connect to Redis or MongoDB
+
+**Solution**:
+```bash
+# Check Redis is running
+redis-cli ping  # Should return PONG
+
+# Check MongoDB is running
+mongosh --eval "db.adminCommand('ping')"
+
+# Verify connection settings in application.properties
+```
+
+#### 2. Messages Not Persisting
+
+**Problem**: Messages disappear unexpectedly
+
+**Solution**:
+- Check TTL settings: `persistence.duration.minutes`
+- Verify MongoDB TTL indexes: `db.{collection}.getIndexes()`
+- Check async executor isn't overloaded
+
+#### 3. Slow Pop Operations
+
+**Problem**: Pop requests taking too long
+
+**Solution**:
+- Monitor Redis cache hit rate
+- Check MongoDB indexes on `consumed` field
+- Review network latency between service and databases
+
+#### 4. Authentication Failures
+
+**Problem**: 401 Unauthorized errors
+
+**Solution**:
+```bash
+# Test with curl
+curl -u user:password http://localhost:8080/queue/pop \
+  -H "consumerGroup: test-group"
+
+# Verify credentials in application.properties
+```
+
+### Health Checks
+
+Add Spring Boot Actuator for monitoring:
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+```
+
+Access health endpoints:
+- `GET /actuator/health` - Overall health
+- `GET /actuator/metrics` - Application metrics
+
+## 11. Contributing
+
+We welcome contributions! Please follow these guidelines:
+
+### Development Setup
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes
+4. Run tests: `mvn test`
+5. Commit: `git commit -m 'Add amazing feature'`
+6. Push: `git push origin feature/amazing-feature`
+7. Open a Pull Request
+
+### Code Standards
+
+- Follow Java naming conventions
+- Add JavaDoc for public methods
+- Write unit tests for new features
+- Maintain >80% code coverage
+- Use Lombok annotations to reduce boilerplate
+
+### Reporting Issues
+
+Please include:
+- Clear description of the issue
+- Steps to reproduce
+- Expected vs actual behavior
+- Environment details (Java version, OS, etc.)
+
+## 12. License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Additional Resources
+
+- [Spring Boot Documentation](https://docs.spring.io/spring-boot/docs/current/reference/html/)
+- [Redis Documentation](https://redis.io/docs/)
+- [MongoDB Documentation](https://www.mongodb.com/docs/)
+- [REST API Best Practices](https://restfulapi.net/)
+
+## Support
+
+For questions or support:
+- 📧 Email: [support@example.com](mailto:support@example.com)
+- 💬 Slack: [Join our channel](https://example.slack.com)
+- 🐛 Issues: [GitHub Issues](https://github.com/your-repo/issues)
+
+---
+
+**Built with ❤️ using Spring Boot**
