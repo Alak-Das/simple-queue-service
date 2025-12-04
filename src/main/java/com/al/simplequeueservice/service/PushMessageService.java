@@ -18,6 +18,10 @@ import java.util.concurrent.TimeUnit;
 
 import static com.al.simplequeueservice.util.SQSConstants.CREATED_AT;
 
+/**
+ * Service for pushing messages to the queue. Messages are added to a cache
+ * and then asynchronously persisted to MongoDB with a TTL index.
+ */
 @Service
 public class PushMessageService {
 
@@ -36,18 +40,34 @@ public class PushMessageService {
     @Qualifier("taskExecutor")
     private Executor taskExecutor;
 
+    /**
+     * Pushes a message to the queue. The message is first added to a cache for immediate availability,
+     * and then saved to MongoDB asynchronously. A TTL index is ensured for the message's collection.
+     *
+     * @param message The {@link Message} object to be pushed.
+     * @return The {@link Message} that was pushed.
+     */
     public Message push(Message message) {
-        logger.debug("Saving message with content: {} to Consumer Group: {}", message.getContent(), message.getConsumerGroup());
+        logger.debug("Attempting to push message with content: {} to Consumer Group: {}", message.getContent(), message.getConsumerGroup());
         // Save the Message to Cache
         cacheService.addMessage(message);
+        logger.debug("Message with ID {} added to cache for Consumer Group: {}", message.getId(), message.getConsumerGroup());
+
         // Save the Message to DB Asynchronously
         taskExecutor.execute(() -> {
             createTTLIndex(message);
             mongoTemplate.save(message, message.getConsumerGroup());
+            logger.info("Message with ID {} asynchronously saved to DB for Consumer Group: {}", message.getId(), message.getConsumerGroup());
         });
         return message;
     }
 
+    /**
+     * Ensures a TTL (Time-To-Live) index exists on the 'createdAt' field for the message's collection.
+     * This index automatically deletes documents after a specified time.
+     *
+     * @param message The {@link Message} for which to ensure the TTL index.
+     */
     private void createTTLIndex(Message message) {
         MongoCollection<Document> collection = mongoClient.getDatabase(mongoDB).getCollection(message.getConsumerGroup());
         boolean ttlExists = collection.listIndexes()
@@ -59,10 +79,10 @@ public class PushMessageService {
                 });
 
         if (!ttlExists) {
-            logger.debug("TTL index does not exist on field: {} for collection: {}. Creating...", CREATED_AT, message.getConsumerGroup());
+            logger.info("TTL index does not exist on field: {} for collection: {}. Creating with {} minutes expiration.", CREATED_AT, message.getConsumerGroup(), expireMinutes);
             IndexOptions indexOptions = new IndexOptions().expireAfter(expireMinutes, TimeUnit.MINUTES);
             collection.createIndex(new Document(CREATED_AT, 1), indexOptions);
-            logger.debug("TTL index created on field: {} for collection: {}", CREATED_AT, message.getConsumerGroup());
+            logger.info("TTL index created on field: {} for collection: {}", CREATED_AT, message.getConsumerGroup());
         } else {
             logger.debug("TTL index already exists on field: {} for collection: {}", CREATED_AT, message.getConsumerGroup());
         }

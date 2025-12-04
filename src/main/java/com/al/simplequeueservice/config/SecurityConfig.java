@@ -38,8 +38,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests((requests) -> requests
-                        .requestMatchers(SQSConstants.QUEUE_PUSH_URL, SQSConstants.QUEUE_POP_URL).hasAnyRole(SQSConstants.USER_ROLE, SQSConstants.ADMIN_ROLE)
-                        .requestMatchers(SQSConstants.QUEUE_VIEW_URL).access(new WebExpressionAuthorizationManager(SQSConstants.HAS_ADMIN_ROLE))
+                        .requestMatchers(SQSConstants.QUEUE_BASE_URL + SQSConstants.PUSH_URL, SQSConstants.QUEUE_BASE_URL + SQSConstants.POP_URL).hasAnyRole(SQSConstants.USER_ROLE, SQSConstants.ADMIN_ROLE)
+                        .requestMatchers(SQSConstants.QUEUE_BASE_URL + SQSConstants.VIEW_URL).access(new WebExpressionAuthorizationManager(SQSConstants.HAS_ADMIN_ROLE))
                         .anyRequest().authenticated()
                 )
                 .httpBasic(withDefaults())
