@@ -13,11 +13,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
-import static com.al.simplequeueservice.util.SQSConstants.CREATED_AT_INDEX_FIELD;
+import static com.al.simplequeueservice.util.SQSConstants.CREATED_AT;
 
 @Service
 public class PushMessageService {
@@ -56,16 +55,16 @@ public class PushMessageService {
                 .stream()
                 .anyMatch(index -> {
                     Document key = (Document) index.get("key");
-                    return key != null && key.containsKey(CREATED_AT_INDEX_FIELD);
+                    return key != null && key.containsKey(CREATED_AT);
                 });
 
         if (!ttlExists) {
-            logger.info("TTL index does not exist on field: {} for collection: {}. Creating...", CREATED_AT_INDEX_FIELD, message.getConsumerGroup());
+            logger.debug("TTL index does not exist on field: {} for collection: {}. Creating...", CREATED_AT, message.getConsumerGroup());
             IndexOptions indexOptions = new IndexOptions().expireAfter(expireMinutes, TimeUnit.MINUTES);
-            collection.createIndex(new Document(CREATED_AT_INDEX_FIELD, 1), indexOptions);
-            logger.info("TTL index created on field: {} for collection: {}", CREATED_AT_INDEX_FIELD, message.getConsumerGroup());
+            collection.createIndex(new Document(CREATED_AT, 1), indexOptions);
+            logger.debug("TTL index created on field: {} for collection: {}", CREATED_AT, message.getConsumerGroup());
         } else {
-            logger.info("TTL index already exists on field: {} for collection: {}", CREATED_AT_INDEX_FIELD, message.getConsumerGroup());
+            logger.debug("TTL index already exists on field: {} for collection: {}", CREATED_AT, message.getConsumerGroup());
         }
     }
 }

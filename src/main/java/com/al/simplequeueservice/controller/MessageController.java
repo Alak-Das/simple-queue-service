@@ -39,7 +39,7 @@ public class MessageController {
 
     @PostMapping(SQSConstants.PUSH_URL)
     public MessageResponse push(@RequestHeader(SQSConstants.CONSUMER_GROUP_HEADER) String consumerGroup, @RequestBody String content) {
-        logger.info("Received message with content: {} for Consumer Group: {}", content, consumerGroup);
+        logger.debug("Received message with content: {} for Consumer Group: {}", content, consumerGroup);
         String messageId = UUID.randomUUID().toString();
         Message message = new Message(messageId, consumerGroup, content);
         Message pushedMessage = pushMessageService.push(message);
@@ -48,7 +48,7 @@ public class MessageController {
 
     @GetMapping(SQSConstants.POP_URL)
     public ResponseEntity<MessageResponse> pop(@RequestHeader(SQSConstants.CONSUMER_GROUP_HEADER) String consumerGroup) {
-        logger.info("Received request to pop message from the Queue for Consumer Group: {}", consumerGroup);
+        logger.debug("Received request to pop message from the Queue for Consumer Group: {}", consumerGroup);
         Optional<Message> message = popMessageService.pop(consumerGroup);
         return message.map(msg -> ResponseEntity.ok(new MessageResponse(msg)))
                 .orElse(ResponseEntity.notFound().build());
@@ -57,7 +57,7 @@ public class MessageController {
     @GetMapping(SQSConstants.VIEW_URL)
     public ResponseEntity<?> view(@RequestHeader(SQSConstants.CONSUMER_GROUP_HEADER) String consumerGroup, @RequestHeader(value = SQSConstants.MESSAGE_COUNT_HEADER) int messageCount,
                                   @RequestHeader(value = SQSConstants.CONSUMED, required = false) String consumed) {
-        logger.info("Received request to view all messages in the Queue for Consumer Group: {}. Filter by consumed: {}", consumerGroup, StringUtils.isEmpty(consumed) ? "" : consumed);
+        logger.debug("Received request to view all messages in the Queue for Consumer Group: {}. Filter by consumed: {}", consumerGroup, StringUtils.isEmpty(consumed) ? "" : consumed);
 
         if (messageCount < 1 || messageCount > messageAllowedCount) {
             return ResponseEntity.badRequest().body(new ErrorResponse(400, "Bad Request", String.format(SQSConstants.MESSAGE_COUNT_VALIDATION_ERROR_MESSAGE, messageAllowedCount), SQSConstants.QUEUE_VIEW_URL));

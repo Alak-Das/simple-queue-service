@@ -4,7 +4,7 @@ public class SQSConstants {
 
     public static final String ID = "id";
     public static final String CONSUMED = "consumed";
-    public static final String CREATED_AT_INDEX_FIELD = "createdAt";
+    public static final String CREATED_AT = "createdAt";
     public static final int CORE_POOL_SIZE = 5;
     public static final int MAX_POOL_SIZE = 10;
     public static final int QUEUE_CAPACITY = 25;

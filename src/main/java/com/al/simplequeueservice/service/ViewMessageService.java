@@ -30,7 +30,7 @@ public class ViewMessageService {
     private static final Logger logger = LoggerFactory.getLogger(ViewMessageService.class);
 
     public List<Message> view(String consumerGroup, int messageCount, String consumed) {
-        logger.info("Viewing all messages in the Queue for Consumer Group: {}. Filter by consumed: {}", consumerGroup, StringUtils.isEmpty(consumed) ? "" : consumed);
+        logger.debug("Viewing all messages in the Queue for Consumer Group: {}. Filter by consumed: {}", consumerGroup, StringUtils.isEmpty(consumed) ? "" : consumed);
 
         List<Message> combinedMessages = new ArrayList<>();
 
@@ -66,7 +66,7 @@ public class ViewMessageService {
         // Sort by createdAt to maintain consistent order
         combinedMessages.sort(Comparator.comparing(Message::getCreatedAt));
 
-        logger.info("Returning a combined list of {} unique messages for Consumer Group: {}", combinedMessages.size(), consumerGroup);
+        logger.debug("Returning a combined list of {} unique messages for Consumer Group: {}", combinedMessages.size(), consumerGroup);
         return combinedMessages;
     }
 }
