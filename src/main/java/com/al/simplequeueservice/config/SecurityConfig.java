@@ -1,8 +1,7 @@
 package com.al.simplequeueservice.config;
 
+import com.al.simplequeueservice.util.SQSConstants;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -39,8 +38,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests((requests) -> requests
-                        .requestMatchers("/queue/push", "/queue/pop").hasAnyRole("USER", "ADMIN")
-                        .requestMatchers("/queue/view").access(new WebExpressionAuthorizationManager("hasRole('ADMIN')"))
+                        .requestMatchers(SQSConstants.QUEUE_PUSH_URL, SQSConstants.QUEUE_POP_URL).hasAnyRole(SQSConstants.USER_ROLE, SQSConstants.ADMIN_ROLE)
+                        .requestMatchers(SQSConstants.QUEUE_VIEW_URL).access(new WebExpressionAuthorizationManager(SQSConstants.HAS_ADMIN_ROLE))
                         .anyRequest().authenticated()
                 )
                 .httpBasic(withDefaults())
@@ -54,14 +53,14 @@ public class SecurityConfig {
                 User.builder()
                         .username(userUsername)
                         .password(passwordEncoder.encode(userPassword))
-                        .roles("USER")
+                        .roles(SQSConstants.USER_ROLE)
                         .build();
 
         UserDetails admin =
                 User.builder()
                         .username(adminUsername)
                         .password(passwordEncoder.encode(adminPassword))
-                        .roles("ADMIN", "USER")
+                        .roles(SQSConstants.ADMIN_ROLE, SQSConstants.USER_ROLE)
                         .build();
 
         return new InMemoryUserDetailsManager(user, admin);

@@ -1,6 +1,7 @@
 package com.al.simplequeueservice.service;
 
 import com.al.simplequeueservice.model.Message;
+import com.al.simplequeueservice.util.SQSConstants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -32,7 +33,7 @@ class CacheServiceTest {
     private CacheService cacheService;
 
     private static final String CONSUMER_GROUP = "testGroup";
-    private static final String CACHE_KEY = CacheService.CACHE_PREFIX + CONSUMER_GROUP;
+    private static final String CACHE_KEY = SQSConstants.CACHE_PREFIX + CONSUMER_GROUP;
     private Message message;
 
     @BeforeEach

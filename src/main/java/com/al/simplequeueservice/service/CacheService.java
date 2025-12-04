@@ -1,6 +1,7 @@
 package com.al.simplequeueservice.service;
 
 import com.al.simplequeueservice.model.Message;
+import com.al.simplequeueservice.util.SQSConstants;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -13,7 +14,6 @@ import java.util.stream.Collectors;
 @Service
 public class CacheService {
 
-    public static final String CACHE_PREFIX = "consumerGroupMessages:";
     private final RedisTemplate<String, Object> redisTemplate;
 
     @Value("${cache.ttl.minutes}")
@@ -24,18 +24,18 @@ public class CacheService {
     }
 
     public void addMessage(Message message) {
-        String key = CACHE_PREFIX + message.getConsumerGroup();
+        String key = SQSConstants.CACHE_PREFIX + message.getConsumerGroup();
         redisTemplate.opsForList().leftPush(key, message);
         redisTemplate.expire(key, Duration.ofMinutes(redisCacheTtlMinutes));
     }
 
     public Message popMessage(String consumerGroup) {
-        String key = CACHE_PREFIX + consumerGroup;
+        String key = SQSConstants.CACHE_PREFIX + consumerGroup;
         return (Message) redisTemplate.opsForList().rightPop(key);
     }
 
     public List<Message> viewMessages(String consumerGroup) {
-        String key = CACHE_PREFIX + consumerGroup;
+        String key = SQSConstants.CACHE_PREFIX + consumerGroup;
         List<Object> cachedObjects = redisTemplate.opsForList().range(key, 0, -1);
         if (cachedObjects == null || cachedObjects.isEmpty()) {
             return Collections.emptyList();

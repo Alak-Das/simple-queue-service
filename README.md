@@ -46,17 +46,17 @@ graph TD
     C -- Interacts with DB --> D
 
     subgraph Push Operation
-        B_push(POST /queue/push) --> C_push[MessageService.push]
+        B_push(POST /queue/push) --> C_push[PushMessageService.push]
         C_push -- Saves Message --> D_push(MongoDB Collection)
     end
 
     subgraph Pop Operation
-        B_pop(GET /queue/pop) --> C_pop[MessageService.pop]
+        B_pop(GET /queue/pop) --> C_pop[PopMessageService.pop]
         C_pop -- Finds & Modifies Oldest Message --> D_pop(MongoDB Collection)
     end
 
     subgraph View Operation
-        B_view(GET /queue/view) --> C_view[MessageService.view]
+        B_view(GET /queue/view) --> C_view[ViewMessageService.view]
         C_view -- Retrieves All Messages --> D_view(MongoDB Collection)
     end
 
@@ -71,20 +71,29 @@ graph TD
 *   **RESTful API:** Provides a simple and intuitive API for interacting with the queue.
 *   **Message Persistence:** Uses MongoDB to store messages, ensuring data durability.
 *   **At-Least-Once Delivery:** The `pop` operation marks messages as processed, which is a step towards ensuring at-least-once delivery.
+*   **Caching:** Leverages Redis to cache messages for faster retrieval, reducing the load on the primary database.
 *   **API Documentation:** Integrated with SpringDoc to provide OpenAPI documentation.
 
 ## Message Retention
 
-This service implements a Time-To-Live (TTL) policy for messages to prevent the database from growing indefinitely. Messages are automatically deleted from the queue after a configurable period.
+This service implements a Time-To-Live (TTL) policy for messages in MongoDB to prevent the database from growing indefinitely. Messages are automatically deleted from the queue after a configurable period.
 
-- **Default Retention Period:** By default, messages are retained for **10 minutes**.
-- **Configuration:** This duration can be configured in the `application.properties` file by setting the `message.expiry.minutes` property.
+-   **Default Retention Period:** By default, messages are retained for **30 minutes**.
+-   **Configuration:** This duration can be configured in the `application.properties` file by setting the `persistence.duration.minutes` property.
+
+## Caching (Redis)
+
+The service utilizes Redis as a cache to improve performance for message operations. Messages are cached for a specified duration, reducing the need to frequently access MongoDB.
+
+-   **Default Cache TTL:** Messages are cached for **5 minutes**.
+-   **Configuration:** This duration can be configured in the `application.properties` file by setting the `cache.ttl.minutes` property.
 
 ## Technologies Used
 
-*   **Java 17**
+*   **Java 21**
 *   **Spring Boot 3.2.5**
 *   **Spring Data MongoDB:** For database interaction.
+*   **Spring Data Redis:** For caching messages.
 *   **Spring Web:** For creating the RESTful API.
 *   **Spring Security:** For securing the application, with role-based access control.
 *   **Lombok:** To reduce boilerplate code.
@@ -185,16 +194,23 @@ The application uses HTTP Basic Authentication. Usernames and passwords are conf
     *   `GET /queue/pop`: Pops the oldest unprocessed message from the queue for a specific `consumerGroup`. Returns a `MessageResponse`.
     *   `GET /queue/view`: Views all messages (or processed/unprocessed messages) in the queue for a specific `consumerGroup`.
 
-*   **`MessageService.java`**: This class contains the business logic for the queue operations.
-    *   `push(consumerGroup, content)`: Saves a new message to the specified `consumerGroup` collection in MongoDB.
-    *   `pop(consumerGroup)`: Finds the oldest unprocessed message, marks it as processed, and returns it. This is an atomic operation.
-    *   `view(consumerGroup)`: Retrieves all messages from the specified `consumerGroup` collection.
+*   **`PushMessageService.java`**: This class contains the business logic for pushing messages. It saves a new message to the specified `consumerGroup` collection in MongoDB and also adds it to Redis cache.
 
-*   **`MongoTTLConfig.java`**: This class configures the Time-To-Live (TTL) index on the `createdAt` field for all message collections. This ensures that messages are automatically deleted after a configured period.
+*   **`PopMessageService.java`**: This class contains the business logic for popping messages. It attempts to pop a message from Redis cache first. If not found in cache, it retrieves the oldest unprocessed message from MongoDB, marks it as processed, and returns it. This is an atomic operation.
 
-*   **`SecurityConfig.java`**: This class is responsible for the security configuration of the application. It can be used to add authentication and authorization mechanisms.
+*   **`ViewMessageService.java`**: This class contains the business logic for viewing messages. It retrieves messages from the specified `consumerGroup` collection, either from Redis cache or MongoDB based on availability and configuration.
+
+*   **`CacheService.java`**: This service interacts with Redis to perform caching operations like adding, popping, and viewing messages from the cache.
+
+*   **`AsyncConfig.java`**: Configures an asynchronous task executor for background tasks, such as updating messages in MongoDB after they are popped from Redis.
+
+*   **`RedisConfig.java`**: This class configures Redis connection settings and cache managers.
+
+*   **`SecurityConfig.java`**: This class is responsible for the security configuration of the application. It defines authentication and authorization mechanisms with role-based access control.
 
 *   **`GlobalExceptionHandler.java`**: This class handles exceptions thrown by the application and returns appropriate HTTP responses.
+
+*   **`SQSConstants.java`**: Contains constants used throughout the application.
 
 ### Data Model
 
@@ -219,17 +235,20 @@ The `Message` documents are stored in MongoDB collections. The name of the colle
 sequenceDiagram
     participant Client
     participant MessageController
-    participant MessageService
+    participant PushMessageService
+    participant CacheService
     participant MongoTemplate
     participant MongoDB
 
     Client->>+MessageController: POST /queue/push (consumerGroup, message)
-    MessageController->>+MessageService: push(consumerGroup, message)
-    MessageService->>+MongoTemplate: save(message, consumerGroup)
+    MessageController->>+PushMessageService: push(consumerGroup, message)
+    PushMessageService->>+MongoTemplate: save(message, consumerGroup)
     MongoTemplate->>+MongoDB: insert(message)
     MongoDB-->>-MongoTemplate: savedMessage
-    MongoTemplate-->>-MessageService: savedMessage
-    MessageService-->>-MessageController: savedMessage
+    MongoTemplate-->>-PushMessageService: savedMessage
+    PushMessageService->>+CacheService: addMessage(savedMessage)
+    CacheService-->>-PushMessageService: 
+    PushMessageService-->>-MessageController: savedMessage
     MessageController-->>-Client: 200 OK (savedMessage)
 ```
 
@@ -239,29 +258,44 @@ sequenceDiagram
 sequenceDiagram
     participant Client
     participant MessageController
-    participant MessageService
+    participant PopMessageService
+    participant CacheService
     participant MongoTemplate
     participant MongoDB
 
     Client->>MessageController: GET /queue/pop (consumerGroup)
     activate MessageController
-    MessageController->>MessageService: pop(consumerGroup)
-    activate MessageService
-    MessageService->>MongoTemplate: findAndModify(query, update, options, Message.class, consumerGroup)
-    activate MongoTemplate
-    MongoTemplate->>MongoDB: findAndModify(query, update)
-    activate MongoDB
-    MongoDB-->>MongoTemplate: modifiedMessage
-    deactivate MongoDB
-    MongoTemplate-->>MessageService: Optional<modifiedMessage>
-    deactivate MongoTemplate
-    MessageService-->>MessageController: Optional<modifiedMessage>
-    deactivate MessageService
-    alt Message Found
-        MessageController-->>Client: 200 OK (modifiedMessage)
-    else Message Not Found
-        MessageController-->>Client: 404 Not Found
+    MessageController->>PopMessageService: pop(consumerGroup)
+    activate PopMessageService
+    PopMessageService->>CacheService: popMessage(consumerGroup)
+    activate CacheService
+    CacheService-->>PopMessageService: Optional<cachedMessage>
+    deactivate CacheService
+
+    alt Message Found in Cache
+        PopMessageService->>PopMessageService: updateMessageInMongo(messageId, consumerGroup) (Async)
+        PopMessageService-->>MessageController: cachedMessage
+    else Message Not Found in Cache
+        PopMessageService->>MongoTemplate: findAndModify(query, update, options, Message.class, consumerGroup)
+        activate MongoTemplate
+        MongoTemplate->>MongoDB: findAndModify(query, update)
+        activate MongoDB
+        MongoDB-->>MongoTemplate: modifiedMessage
+        deactivate MongoDB
+        MongoTemplate-->>PopMessageService: Optional<modifiedMessage>
+        deactivate MongoTemplate
+        alt Message Found in MongoDB
+            PopMessageService-->>MessageController: modifiedMessage
+        else Message Not Found
+            MessageController-->>Client: 404 Not Found
+            deactivate PopMessageService
+            deactivate MessageController
+            return
+        end
     end
+    PopMessageService-->>MessageController: messageResponse
+    deactivate PopMessageService
+    MessageController-->>Client: 200 OK (messageResponse)
     deactivate MessageController
 ```
 
@@ -277,7 +311,8 @@ The following properties can be configured in `application.properties` or by set
 
 *   `spring.data.mongodb.uri`: The connection URI for the MongoDB instance. Can be set via `MONGO_URI` environment variable.
 *   `spring.data.mongodb.database`: The database name for MongoDB. Can be set via `MONGO_DB` environment variable.
-*   `message.expiry.minutes`: The retention period for messages in minutes. Default is 10.
+*   `persistence.duration.minutes`: The retention period for messages in MongoDB in minutes. Default is 30.
+*   `cache.ttl.minutes`: The Time-To-Live for messages in Redis cache in minutes. Default is 5.
 *   `server.port`: The port on which the application will run. Default is 8080.
 *   `security.user.username`: Username for the 'USER' role. Can be set via `SECURITY_USER_USERNAME` environment variable.
 *   `security.user.password`: Password for the 'USER' role. Can be set via `SECURITY_USER_PASSWORD` environment variable.
@@ -288,9 +323,10 @@ The following properties can be configured in `application.properties` or by set
 
 ### Prerequisites
 
-*   Java 17 or later
+*   Java 21 or later
 *   Maven 3.2+
 *   MongoDB instance running
+*   Redis instance running
 
 ### Configuration
 
@@ -302,9 +338,11 @@ The following properties can be configured in `application.properties` or by set
     ```bash
     cd simple-queue-service
     ```
-3.  Configure the MongoDB connection in `src/main/resources/application.properties`:
+3.  Configure the MongoDB and Redis connections in `src/main/resources/application.properties` or using environment variables:
     ```properties
     spring.data.mongodb.uri=mongodb://localhost:27017/mydatabase
+    spring.redis.host=localhost
+    spring.redis.port=6379
     ```
 
 ### Build and Run

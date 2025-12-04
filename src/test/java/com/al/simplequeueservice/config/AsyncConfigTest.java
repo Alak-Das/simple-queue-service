@@ -23,6 +23,6 @@ class AsyncConfigTest {
         assertEquals(5, executor.getCorePoolSize());
         assertEquals(10, executor.getMaxPoolSize());
         assertEquals(25, executor.getQueueCapacity());
-        assertEquals("PersistenceDataUpdater-", executor.getThreadNamePrefix());
+        assertEquals("DBDataUpdater-", executor.getThreadNamePrefix());
     }
 }
