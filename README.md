@@ -34,7 +34,7 @@ The Simple Queue Service acts as a central message broker for applications requi
 ```mermaid
 graph TD
     A[Producer Application] -->|Push Message| B(Simple Queue Service)
-    B -->|Add to Cache (Redis)| C[Redis Cache]
+    B -->|Add to Cache (Redis)| C[Redis]
     B -->|Persist Async (MongoDB)| D[MongoDB Database]
     E[Consumer Application] -->|Pop/View Messages| B
     B -->|Retrieve from Cache (Redis)| C
