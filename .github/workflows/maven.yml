@@ -18,6 +18,15 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo
+        ports:
+          - 27017:27017
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
 
     steps:
     - uses: actions/checkout@v4
@@ -28,7 +37,14 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Build the project with Maven
-      run: mvn clean install
+      run: mvn clean package
+      env:
+        MONGO_URI: mongodb://admin:password@localhost:27017
+        MONGO_DB: simple-queue-db
+        SECURITY_USER_USERNAME: user
+        SECURITY_USER_PASSWORD: password
+        SECURITY_ADMIN_USERNAME: admin
+        SECURITY_ADMIN_PASSWORD: adminpassword
 
     # Optional: Uploads the full dependency graph to GitHub to improve the quality of Dependabot alerts this repository can receive
     - name: Update dependency graph
